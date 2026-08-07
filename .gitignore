@@ -1,0 +1,38 @@
+# ─── Environment ────────────────────────────────────────────────
+.env
+*.env.local
+
+# ─── Frontend ───────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.DS_Store
+
+# ─── Backend ────────────────────────────────────────────────────
+backend/target/
+backend/.mvn/
+backend/*.iml
+backend/.idea/
+backend/uploads/
+
+# ─── AI Service ─────────────────────────────────────────────────
+ai-service/__pycache__/
+ai-service/.venv/
+ai-service/*.egg-info/
+ai-service/dist/
+ai-service/.pytest_cache/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# ─── Docker ─────────────────────────────────────────────────────
+docker/data/
+*.log
+
+# ─── IDE / OS ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
