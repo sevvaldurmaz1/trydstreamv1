@@ -240,6 +240,7 @@ public class DocumentService {
 
         Map<String, Object> body = new HashMap<>();
         body.put("document_id", documentId);
+        body.put("document_type", document.getDocumentType() != null ? document.getDocumentType().getCode() : "FATURA");
         body.put("fields", fields.stream().map(f -> {
             Map<String, Object> f2 = new HashMap<>();
             f2.put("field_name", f.getFieldName());

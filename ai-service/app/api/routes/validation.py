@@ -16,6 +16,7 @@ from typing import List
 class ValidateDocumentRequest(BaseModel):
     document_id: int
     fields: List[ExtractedFieldSchema]
+    document_type: str = "FATURA"
 
 
 @router.post("/validate", response_model=ValidationResultSchema)
@@ -24,4 +25,5 @@ async def validate(request: ValidateDocumentRequest):
     return validate_document(
         document_id=request.document_id,
         fields=request.fields,
+        document_type=request.document_type,
     )

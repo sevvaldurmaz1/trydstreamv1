@@ -19,15 +19,33 @@ from app.models.schemas import (
     ValidationResultSchema,
 )
 
-REQUIRED_FIELDS = {
-    "INVOICE_NUMBER": IssueSeverity.HIGH,
-    "DATE": IssueSeverity.HIGH,
-    "EXPORTER": IssueSeverity.HIGH,
-    "IMPORTER": IssueSeverity.HIGH,
-    "CURRENCY": IssueSeverity.MEDIUM,
-    "AMOUNT": IssueSeverity.HIGH,
-    "BILL_OF_LADING_NUMBER": IssueSeverity.MEDIUM,
+# Zorunlu alanlar belge tipine göre değişir – örn. konşimento numarası bir
+# faturada asla bulunmaz, bu yüzden her belge tipinde onu zorunlu saymak
+# güven puanını yapay olarak düşürüyordu.
+REQUIRED_FIELDS_BY_TYPE: dict[str, dict[str, IssueSeverity]] = {
+    "FATURA": {
+        "INVOICE_NUMBER": IssueSeverity.HIGH,
+        "DATE": IssueSeverity.HIGH,
+        "EXPORTER": IssueSeverity.HIGH,
+        "IMPORTER": IssueSeverity.HIGH,
+        "CURRENCY": IssueSeverity.MEDIUM,
+        "AMOUNT": IssueSeverity.HIGH,
+    },
+    "KONSIMENTO": {
+        "BILL_OF_LADING_NUMBER": IssueSeverity.HIGH,
+        "EXPORTER": IssueSeverity.HIGH,
+        "IMPORTER": IssueSeverity.HIGH,
+        "PORT_OF_LOADING": IssueSeverity.MEDIUM,
+        "PORT_OF_DISCHARGE": IssueSeverity.MEDIUM,
+    },
+    "AWB": {
+        "BILL_OF_LADING_NUMBER": IssueSeverity.HIGH,
+        "EXPORTER": IssueSeverity.HIGH,
+        "IMPORTER": IssueSeverity.HIGH,
+    },
 }
+
+DEFAULT_REQUIRED_FIELDS: dict[str, IssueSeverity] = REQUIRED_FIELDS_BY_TYPE["FATURA"]
 
 VALID_CURRENCIES = {"USD", "EUR", "GBP", "JPY", "CNY", "CHF", "AUD", "CAD", "SGD", "HKD"}
 
@@ -38,11 +56,12 @@ DATE_FORMATS = [
 ]
 
 
-def _rule_missing_fields(fields: list[ExtractedFieldSchema]) -> list[ValidationIssueSchema]:
+def _rule_missing_fields(fields: list[ExtractedFieldSchema], document_type: str) -> list[ValidationIssueSchema]:
     issues: list[ValidationIssueSchema] = []
     field_map = {f.field_name: f for f in fields}
+    required_fields = REQUIRED_FIELDS_BY_TYPE.get(document_type.upper(), DEFAULT_REQUIRED_FIELDS)
 
-    for field_name, severity in REQUIRED_FIELDS.items():
+    for field_name, severity in required_fields.items():
         field = field_map.get(field_name)
         if not field or not field.field_value:
             issues.append(ValidationIssueSchema(
@@ -160,27 +179,35 @@ def _calculate_confidence(issues: list[ValidationIssueSchema], fields: list[Extr
     for issue in issues:
         base_score -= penalty_map.get(issue.severity, 5)
 
-    # Average field confidence adjustment
-    if fields:
-        avg_field_confidence = sum(f.confidence_score for f in fields) / len(fields)
+    # Average field confidence adjustment – only over fields that were actually
+    # extracted. Fields irrelevant to this document type (e.g. BILL_OF_LADING_NUMBER
+    # on an invoice) are never populated and shouldn't drag the score down; missing
+    # *required* fields are already penalised above via MISSING_FIELD issues.
+    populated = [f for f in fields if f.field_value]
+    if populated:
+        avg_field_confidence = sum(f.confidence_score for f in populated) / len(populated)
         base_score = int(base_score * avg_field_confidence)
 
     return max(0, min(100, base_score))
 
 
-def validate_document(document_id: int, fields: list[ExtractedFieldSchema]) -> ValidationResultSchema:
+def validate_document(document_id: int, fields: list[ExtractedFieldSchema], document_type: str = "FATURA") -> ValidationResultSchema:
     """Run all validation rules and return a consolidated ValidationResult."""
     all_issues: list[ValidationIssueSchema] = []
 
-    rules = [
-        _rule_missing_fields,
+    field_rules = [
         _rule_invalid_date,
         _rule_currency_validation,
         _rule_amount_format,
         _rule_container_number_format,
     ]
 
-    for rule in rules:
+    try:
+        all_issues.extend(_rule_missing_fields(fields, document_type))
+    except Exception as exc:
+        logger.error(f"Rule _rule_missing_fields failed: {exc}")
+
+    for rule in field_rules:
         try:
             all_issues.extend(rule(fields))
         except Exception as exc:
@@ -208,5 +235,5 @@ def validate_document(document_id: int, fields: list[ExtractedFieldSchema]) -> V
         overall_status=overall_status,
         confidence_score=confidence,
         issues=all_issues,
-        notes=f"Validated {len(fields)} extracted fields against {len(rules)} rule sets.",
+        notes=f"Validated {len(fields)} extracted fields against {len(field_rules) + 1} rule sets.",
     )

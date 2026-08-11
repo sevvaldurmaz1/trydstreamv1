@@ -45,9 +45,14 @@ const FieldRow = ({
   const saveMutation = useMutation({
     mutationFn: (correctedValue: string) =>
       documentService.correctField(documentId, field.id, correctedValue),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['extracted-fields', documentId] });
       setEditing(false);
+      // Alan düzeltmesi mevcut doğrulama sonucunu geçersiz kılar; paneli
+      // manuel "Yeniden Doğrula" beklemeden otomatik güncelle.
+      await documentService.triggerValidation(documentId);
+      queryClient.invalidateQueries({ queryKey: ['validation', documentId] });
+      queryClient.invalidateQueries({ queryKey: ['document', documentId] });
     },
   });
 
