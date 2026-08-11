@@ -31,7 +31,11 @@ REQUIRED_FIELDS = {
 
 VALID_CURRENCIES = {"USD", "EUR", "GBP", "JPY", "CNY", "CHF", "AUD", "CAD", "SGD", "HKD"}
 
-DATE_FORMATS = ["%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y", "%B %d, %Y", "%d %B %Y"]
+DATE_FORMATS = [
+    "%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y",
+    "%d.%m.%Y", "%Y.%m.%d",
+    "%B %d, %Y", "%d %B %Y",
+]
 
 
 def _rule_missing_fields(fields: list[ExtractedFieldSchema]) -> list[ValidationIssueSchema]:
