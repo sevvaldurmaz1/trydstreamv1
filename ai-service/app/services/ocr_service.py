@@ -70,36 +70,88 @@ FIELD_PATTERNS: dict[str, list[str]] = {
     ],
 }
 
+# Fallback score used only when no real word-level confidence is available
+# (demo text, or an offset that couldn't be matched back to OCR'd words).
+_FALLBACK_PATTERN_SCORE = 0.90
 
-def _extract_text_from_image(file_path: str) -> str:
-    """Run Tesseract OCR on an image file."""
+
+def _words_from_tesseract_data(data: dict, offset: int = 0) -> tuple[str, list[dict]]:
+    """
+    Reconstructs a text string from Tesseract's `image_to_data` word list and
+    returns it alongside per-word (start, end, confidence) spans, so field
+    values can later be matched back to their real OCR confidence.
+    """
+    parts: list[str] = []
+    words: list[dict] = []
+    pos = offset
+    prev_line_key: Optional[tuple] = None
+    n = len(data.get("text", []))
+
+    for i in range(n):
+        word = (data["text"][i] or "").strip()
+        try:
+            conf = float(data["conf"][i])
+        except (TypeError, ValueError):
+            conf = -1.0
+        if not word or conf < 0:
+            continue
+
+        line_key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])
+        if prev_line_key is not None and line_key != prev_line_key:
+            parts.append("\n")
+            pos += 1
+        elif parts:
+            parts.append(" ")
+            pos += 1
+
+        start = pos
+        parts.append(word)
+        pos += len(word)
+        words.append({"start": start, "end": pos, "conf": conf / 100.0})
+        prev_line_key = line_key
+
+    return "".join(parts), words
+
+
+def _extract_text_from_image(file_path: str) -> tuple[str, list[dict]]:
+    """Run Tesseract OCR on an image file. Returns (text, word_confidence_spans)."""
     try:
         import pytesseract
         from PIL import Image
 
         pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
         image = Image.open(file_path)
-        return pytesseract.image_to_string(image, lang=settings.OCR_LANGUAGE)
+        data = pytesseract.image_to_data(image, lang=settings.OCR_LANGUAGE, output_type=pytesseract.Output.DICT)
+        return _words_from_tesseract_data(data)
     except ImportError:
         logger.warning("pytesseract not available – returning placeholder text")
-        return _get_demo_text()
+        return _get_demo_text(), []
     except Exception as exc:
         logger.error(f"OCR extraction failed: {exc}")
-        return ""
+        return "", []
 
 
-def _extract_text_from_pdf(file_path: str) -> str:
-    """Convert PDF pages to images then OCR each page."""
+def _extract_text_from_pdf(file_path: str) -> tuple[str, list[dict]]:
+    """Convert PDF pages to images then OCR each page. Returns (text, word_confidence_spans)."""
     try:
         from pdf2image import convert_from_path
         import pytesseract
 
         pages = convert_from_path(file_path, dpi=300)
-        texts = [pytesseract.image_to_string(page, lang=settings.OCR_LANGUAGE) for page in pages]
-        return "\n\n".join(texts)
+        texts: list[str] = []
+        words: list[dict] = []
+        pos = 0
+        for page in pages:
+            data = pytesseract.image_to_data(page, lang=settings.OCR_LANGUAGE, output_type=pytesseract.Output.DICT)
+            page_text, page_words = _words_from_tesseract_data(data, offset=pos)
+            texts.append(page_text)
+            words.extend(page_words)
+            pos += len(page_text) + 2  # account for the "\n\n" page separator below
+
+        return "\n\n".join(texts), words
     except Exception as exc:
         logger.error(f"PDF OCR failed: {exc}")
-        return _get_demo_text()
+        return _get_demo_text(), []
 
 
 def _get_demo_text() -> str:
@@ -127,8 +179,16 @@ def _get_demo_text() -> str:
     """
 
 
-def _parse_fields(text: str) -> list[ExtractedFieldSchema]:
-    """Apply regex patterns to raw OCR text and return extracted fields."""
+def _confidence_for_span(start: int, end: int, words: list[dict]) -> Optional[float]:
+    """Averages real Tesseract word confidences overlapping a matched field span."""
+    overlapping = [w["conf"] for w in words if w["end"] > start and w["start"] < end]
+    if not overlapping:
+        return None
+    return sum(overlapping) / len(overlapping)
+
+
+def _parse_fields(text: str, words: list[dict]) -> list[ExtractedFieldSchema]:
+    """Apply regex patterns to raw OCR text and return extracted fields with real confidence."""
     fields: list[ExtractedFieldSchema] = []
     text_lower = text.lower()
 
@@ -140,18 +200,17 @@ def _parse_fields(text: str) -> list[ExtractedFieldSchema]:
             match = re.search(pattern, text_lower, re.IGNORECASE | re.MULTILINE)
             if match:
                 value = match.group(1).strip()
-                # Primary pattern → higher confidence
-                score = 0.90 - (i * 0.08)
+                real_conf = _confidence_for_span(match.start(1), match.end(1), words)
+                score = real_conf if real_conf is not None else (_FALLBACK_PATTERN_SCORE - (i * 0.08))
                 break
 
         if value:
             fields.append(ExtractedFieldSchema(
                 field_name=field_name,
                 field_value=value,
-                confidence_score=round(min(score, 1.0), 4),
+                confidence_score=round(min(max(score, 0.0), 1.0), 4),
             ))
         else:
-            # Field not found → include with null value and zero confidence
             fields.append(ExtractedFieldSchema(
                 field_name=field_name,
                 field_value=None,
@@ -167,13 +226,13 @@ def process_document(file_path: str, mime_type: str, document_id: int) -> OcrRes
 
     if not os.path.exists(file_path):
         logger.warning(f"File not found: {file_path} – using demo text")
-        raw_text = _get_demo_text()
+        raw_text, words = _get_demo_text(), []
     elif mime_type == "application/pdf":
-        raw_text = _extract_text_from_pdf(file_path)
+        raw_text, words = _extract_text_from_pdf(file_path)
     else:
-        raw_text = _extract_text_from_image(file_path)
+        raw_text, words = _extract_text_from_image(file_path)
 
-    fields = _parse_fields(raw_text)
+    fields = _parse_fields(raw_text, words)
     elapsed = int((time.time() - start) * 1000)
 
     logger.info(f"Document {document_id}: {len(fields)} fields extracted in {elapsed}ms")

@@ -122,6 +122,10 @@ const DocumentReviewPage = () => {
 
   const validateMutation = useMutation({
     mutationFn: () => documentService.triggerValidation(documentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['validation', documentId] });
+      queryClient.invalidateQueries({ queryKey: ['document', documentId] });
+    },
   });
 
   const isLoading = loadingDoc || loadingFields || loadingValidation;

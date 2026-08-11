@@ -213,6 +213,8 @@ public class DocumentService {
 
         field.setCorrectedValue(correctedValue);
         field.setIsCorrected(true);
+        field.setIsValidated(true);
+        field.setConfidenceScore(BigDecimal.ONE);
         field = extractedFieldRepository.save(field);
 
         return toFieldResponse(field);
