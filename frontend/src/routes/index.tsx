@@ -18,6 +18,7 @@ const MtKontrolPage = lazy(() => import('../pages/mt/MtKontrolPage'));
 const DiscrepancyReportPage = lazy(() => import('../pages/mt/DiscrepancyReportPage'));
 const Mt799Page = lazy(() => import('../pages/mt/Mt799Page'));
 const Mt707Page = lazy(() => import('../pages/mt/Mt707Page'));
+const Mt700ListPage = lazy(() => import('../pages/mt/Mt700ListPage'));
 
 const PageLoader = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -67,6 +68,10 @@ const router = createBrowserRouter([
           {
             path: '/mt/kontrol',
             element: <Suspense fallback={<PageLoader />}><MtKontrolPage /></Suspense>,
+          },
+          {
+            path: '/mt/liste',
+            element: <Suspense fallback={<PageLoader />}><Mt700ListPage /></Suspense>,
           },
           {
             path: '/mt/report/:id',

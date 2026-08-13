@@ -48,4 +48,13 @@ public class DiscrepancyController {
     public ResponseEntity<ApiResponse<DiscrepancyReportResponse>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(discrepancyService.getById(id)));
     }
+
+    /**
+     * Belirli bir MT mesajına bağlı tüm aykırılık raporlarını listeler.
+     */
+    @GetMapping("/mt/{mtMessageId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<DiscrepancyReportResponse>>> listByMtMessage(@PathVariable Long mtMessageId) {
+        return ResponseEntity.ok(ApiResponse.success(discrepancyService.listByMtMessage(mtMessageId)));
+    }
 }

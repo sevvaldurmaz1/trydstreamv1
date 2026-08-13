@@ -13,6 +13,8 @@ public interface DiscrepancyReportRepository extends JpaRepository<DiscrepancyRe
 
     List<DiscrepancyReport> findByUserIdOrderByCheckedAtDesc(Long userId);
 
+    List<DiscrepancyReport> findByMtMessageIdOrderByCheckedAtDesc(Long mtMessageId);
+
     Optional<DiscrepancyReport> findByMtMessageIdAndDocumentId(Long mtMessageId, Long documentId);
 
     @Query("SELECT COUNT(r) FROM DiscrepancyReport r WHERE r.overallResult = 'DISCREPANT' AND r.user.id = :userId")

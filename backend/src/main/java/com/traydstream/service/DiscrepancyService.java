@@ -130,6 +130,14 @@ public class DiscrepancyService {
         return toResponse(report, false);
     }
 
+    @Transactional(readOnly = true)
+    public List<DiscrepancyReportResponse> listByMtMessage(Long mtMessageId) {
+        return reportRepository.findByMtMessageIdOrderByCheckedAtDesc(mtMessageId)
+                .stream()
+                .map(r -> toResponse(r, false))
+                .collect(Collectors.toList());
+    }
+
     // ── AI Servis Çağrısı ─────────────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")

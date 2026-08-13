@@ -70,6 +70,12 @@ export const mtService = {
     const res = await apiClient.get<ApiResponse<DiscrepancyReport>>(`/discrepancy/${id}`);
     return res.data.data;
   },
+
+  /** Belirli bir MT700'e bağlı tüm aykırılık raporlarını listele */
+  listReportsByMt700: async (mtId: number): Promise<DiscrepancyReport[]> => {
+    const res = await apiClient.get<ApiResponse<DiscrepancyReport[]>>(`/discrepancy/mt/${mtId}`);
+    return res.data.data;
+  },
 };
 
 // ── MT 799 (Serbest Format Mesajlar) ────────────────────────────────

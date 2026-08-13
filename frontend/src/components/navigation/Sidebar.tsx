@@ -19,6 +19,7 @@ import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import CompareArrowsOutlinedIcon from '@mui/icons-material/CompareArrowsOutlined';
 import MessageOutlinedIcon from '@mui/icons-material/MessageOutlined';
 import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
+import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined';
 import { useAuth } from '../../context/AuthContext';
 
 // ─────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Belgeler', path: '/documents', icon: <FolderOutlinedIcon fontSize="small" /> },
   { label: 'Yükle', path: '/documents/upload', icon: <CloudUploadOutlinedIcon fontSize="small" /> },
   { label: 'MT Kontrol', path: '/mt/kontrol', icon: <CompareArrowsOutlinedIcon fontSize="small" /> },
+  { label: 'MT700 Listesi', path: '/mt/liste', icon: <ListAltOutlinedIcon fontSize="small" /> },
   { label: 'MT Mesajları', path: '/mt/mesajlar', icon: <MessageOutlinedIcon fontSize="small" /> },
   { label: 'MT Değişiklikleri', path: '/mt/degisiklikler', icon: <EditNoteOutlinedIcon fontSize="small" /> },
   { label: 'Raporlar', path: '/reports', icon: <AssessmentOutlinedIcon fontSize="small" /> },
