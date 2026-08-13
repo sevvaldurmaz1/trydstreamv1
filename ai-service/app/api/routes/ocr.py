@@ -16,7 +16,7 @@ settings = get_settings()
 @router.post("/process", response_model=OcrResultSchema)
 async def process_document(request: ProcessDocumentRequest):
     """Process a document that has already been saved to disk by the backend."""
-    result = ocr_service.process_document(
+    result = await ocr_service.process_document(
         file_path=request.file_path,
         mime_type=request.mime_type,
         document_id=request.document_id,
@@ -40,7 +40,7 @@ async def upload_and_process(
         with open(save_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        result = ocr_service.process_document(
+        result = await ocr_service.process_document(
             file_path=str(save_path),
             mime_type=file.content_type or "application/octet-stream",
             document_id=document_id,

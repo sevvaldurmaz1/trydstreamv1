@@ -9,6 +9,7 @@ Kullanım:
 """
 from __future__ import annotations
 
+import json
 import os
 from typing import Optional
 
@@ -18,6 +19,7 @@ from loguru import logger
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "60"))
+OCR_FALLBACK_TIMEOUT = int(os.getenv("OCR_LLM_FALLBACK_TIMEOUT", "90"))
 
 # ─── ISBP 745 / UCP 600 Bilgi Tabanı ──────────────────────────────────────────
 # Aykırılık türlerine göre eşleştirilmiş kural metinleri.
@@ -174,6 +176,77 @@ Yanıtını Türkçe ver ve kısa tut."""
     except Exception as exc:
         logger.error(f"Ollama hatası: {exc}")
         return None
+
+
+async def extract_fields_with_llm(raw_text: str, field_labels: dict[str, str]) -> dict[str, str]:
+    """
+    Regex'in bulamadığı alanları LLM ile doldurmaya çalışır (yedek/fallback yol).
+    field_labels: {"INVOICE_NUMBER": "fatura numarası", ...} – sadece regex'in
+    kaçırdığı alanlar buraya gelir.
+
+    Halüsinasyon riski nedeniyle burada dönen değerler ham; çağıran taraf
+    (ocr_service) bu değerlerin gerçekten OCR metninde geçtiğini ayrıca
+    doğrulamadan kullanmamalı.
+    """
+    if not field_labels:
+        return {}
+
+    field_desc = "\n".join(f"- {key}: {label}" for key, label in field_labels.items())
+    prompt = f"""Aşağıda bir ticaret finansmanı belgesinden (fatura, konşimento vb.) OCR ile okunmuş ham metin var.
+Bu metinden şu alanları bul ve değerlerini çıkar:
+{field_desc}
+
+Kurallar:
+- Bir alan metinde gerçekten yoksa değerini null yap, ASLA uydurma.
+- Metindeki değeri olduğu gibi (aynı yazımla) döndür.
+- Sadece geçerli JSON nesnesi döndür, başka açıklama ekleme. Anahtarlar tam olarak yukarıdaki liste ile aynı olmalı.
+
+Metin:
+---
+{raw_text[:3000]}
+---
+
+JSON:"""
+
+    try:
+        async with httpx.AsyncClient(timeout=OCR_FALLBACK_TIMEOUT) as client:
+            resp = await client.post(
+                f"{OLLAMA_BASE_URL}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",
+                    "options": {
+                        "temperature": 0.0,
+                        "num_predict": 300,
+                    },
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            raw_response = data.get("response", "").strip()
+            parsed = json.loads(raw_response)
+            if not isinstance(parsed, dict):
+                return {}
+            return {
+                key: str(value).strip()
+                for key, value in parsed.items()
+                if value is not None and str(value).strip() and str(value).strip().lower() != "null"
+            }
+
+    except httpx.ConnectError:
+        logger.warning(f"Ollama bağlantısı kurulamadı ({OLLAMA_BASE_URL}). OCR LLM fallback atlandı.")
+        return {}
+    except httpx.TimeoutException:
+        logger.warning(f"Ollama zaman aşımı ({OCR_FALLBACK_TIMEOUT}s). OCR LLM fallback atlandı.")
+        return {}
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.warning(f"OCR LLM fallback geçersiz JSON döndürdü, atlanıyor: {exc}")
+        return {}
+    except Exception as exc:
+        logger.error(f"OCR LLM fallback hatası: {exc}")
+        return {}
 
 
 async def check_ollama_available() -> bool:

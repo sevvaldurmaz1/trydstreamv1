@@ -15,8 +15,40 @@ from loguru import logger
 
 from app.core.config import get_settings
 from app.models.schemas import ExtractedFieldSchema, OcrResultSchema
+from app.services import ollama_service
 
 settings = get_settings()
+
+# Regex'in kaçırdığı alanları LLM'e sorarken kullanılan Türkçe/dil-bağımsız
+# alan açıklamaları (regex kalıpları İngilizce etiketlere bağımlı olduğu için
+# örn. Türkçe "Fatura No" gibi başlıklarda regex boşa düşebiliyor).
+FIELD_LABELS: dict[str, str] = {
+    "INVOICE_NUMBER": "fatura numarası",
+    "DATE": "belge/fatura tarihi",
+    "EXPORTER": "ihracatçı / satıcı / gönderen firma adı",
+    "IMPORTER": "ithalatçı / alıcı firma adı",
+    "CURRENCY": "para birimi (USD, EUR, GBP vb.)",
+    "AMOUNT": "toplam tutar",
+    "GOODS_DESCRIPTION": "malların/hizmetin tanımı",
+    "COUNTRY_OF_ORIGIN": "menşe ülke",
+    "CONTAINER_NUMBER": "konteyner numarası",
+    "BILL_OF_LADING_NUMBER": "konşimento numarası",
+    "PORT_OF_LOADING": "yükleme limanı",
+    "PORT_OF_DISCHARGE": "boşaltma limanı",
+    "DECLARATION_TEXT": "beyan metni",
+    "INCOTERMS_YEAR": "Incoterms yılı",
+    "UNIT_PRICE": "birim fiyat",
+    "QUANTITY": "miktar",
+    "FREIGHT_VALUE": "navlun tutarı",
+    "INSURANCE_VALUE": "sigorta tutarı",
+    "ADVANCE_PAYMENT": "avans ödeme tutarı",
+    "DISCOUNT": "iskonto tutarı",
+}
+
+# LLM'in doldurduğu alanlar regex eşleşmesi değil; Tesseract kelime bazlı
+# güven skoruna sahip değiller. Sabit, orta seviye bir skor kullanılır ve
+# değerin ham OCR metninde gerçekten geçtiği doğrulandıktan sonra atanır.
+_LLM_FALLBACK_SCORE = 0.55
 
 # ── Field extraction patterns ──────────────────────────────────────
 FIELD_PATTERNS: dict[str, list[str]] = {
@@ -247,7 +279,44 @@ def _parse_fields(text: str, words: list[dict]) -> list[ExtractedFieldSchema]:
     return fields
 
 
-def process_document(file_path: str, mime_type: str, document_id: int) -> OcrResultSchema:
+def _value_present_in_text(value: str, text: str) -> bool:
+    """Anti-halüsinasyon kontrolü: LLM'in döndürdüğü değer gerçekten ham OCR metninde geçiyor mu."""
+    normalize = lambda s: re.sub(r"\s+", " ", s).strip().lower()
+    return normalize(value) in normalize(text)
+
+
+async def _fill_missing_fields_with_llm(
+    fields: list[ExtractedFieldSchema], raw_text: str, document_id: int
+) -> list[ExtractedFieldSchema]:
+    """Regex'in bulamadığı alanlar için LLM'i dener; sadece ham metinde
+    gerçekten geçen değerleri kabul eder (halüsinasyon koruması)."""
+    missing = {f.field_name: FIELD_LABELS[f.field_name] for f in fields if not f.field_value and f.field_name in FIELD_LABELS}
+    if not missing or not raw_text.strip():
+        return fields
+
+    llm_values = await ollama_service.extract_fields_with_llm(raw_text, missing)
+    if not llm_values:
+        return fields
+
+    accepted = 0
+    for field in fields:
+        candidate = llm_values.get(field.field_name)
+        if not candidate:
+            continue
+        if not _value_present_in_text(candidate, raw_text):
+            logger.warning(f"Document {document_id}: LLM '{field.field_name}' için halüsinasyon şüphesi, reddedildi: {candidate!r}")
+            continue
+        field.field_value = candidate
+        field.confidence_score = _LLM_FALLBACK_SCORE
+        accepted += 1
+
+    if accepted:
+        logger.info(f"Document {document_id}: LLM fallback {accepted} alanı doldurdu")
+
+    return fields
+
+
+async def process_document(file_path: str, mime_type: str, document_id: int) -> OcrResultSchema:
     """Main entry point – run OCR and field extraction on a document."""
     start = time.time()
 
@@ -260,6 +329,10 @@ def process_document(file_path: str, mime_type: str, document_id: int) -> OcrRes
         raw_text, words = _extract_text_from_image(file_path)
 
     fields = _parse_fields(raw_text, words)
+
+    if settings.OCR_LLM_FALLBACK:
+        fields = await _fill_missing_fields_with_llm(fields, raw_text, document_id)
+
     elapsed = int((time.time() - start) * 1000)
 
     logger.info(f"Document {document_id}: {len(fields)} fields extracted in {elapsed}ms")

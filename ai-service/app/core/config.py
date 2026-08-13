@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # OCR
     TESSERACT_CMD: str = "/usr/bin/tesseract"
     OCR_LANGUAGE: str = "eng"
+    # Regex bir alanı bulamazsa LLM'i yedek olarak dener (dil/format bağımsız).
+    # Beğenilmezse tek satırda kapatılabilir - kod geri alınmasına gerek yok.
+    OCR_LLM_FALLBACK: bool = True
 
     # Confidence thresholds
     HIGH_CONFIDENCE: float = 0.85
