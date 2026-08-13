@@ -21,7 +21,6 @@ from loguru import logger
 class DiscrepancyFinding:
     rule_code: str
     finding_type: str          # 'R' veya 'O'
-    severity: str              # 'HIGH', 'MEDIUM', 'LOW'
     field_name: str
     description: str
     mt_value: Optional[str] = None
@@ -84,7 +83,6 @@ def _check_r1_lc_expiry(
         return DiscrepancyFinding(
             rule_code="R1",
             finding_type="R",
-            severity="HIGH",
             field_name="lc_expiry_date",
             description=f"Akreditif vade tarihi geçirildi. Akreditif sona erme: {expiry}, İbraz tarihi: {check_date}",
             mt_value=str(expiry),
@@ -118,7 +116,6 @@ def _check_r2_latest_shipment(
                 return DiscrepancyFinding(
                     rule_code="R2",
                     finding_type="R",
-                    severity="HIGH",
                     field_name="SHIPMENT_DATE",
                     description=f"Son yükleme tarihi aşıldı. İzin verilen: {latest}, Belgede: {shipment}",
                     mt_value=str(latest),
@@ -155,7 +152,6 @@ def _check_r3_amount_exceeded(mt: dict, inv: dict) -> Optional[DiscrepancyFindin
         return DiscrepancyFinding(
             rule_code="R3",
             finding_type="R",
-            severity="HIGH",
             field_name="AMOUNT",
             description=(
                 f"Fatura tutarı akreditif limitini aşıyor. "
@@ -193,7 +189,6 @@ def _check_r4_presentation_period(mt: dict, inv: dict, presentation_date: Option
                 return DiscrepancyFinding(
                     rule_code="R4",
                     finding_type="R",
-                    severity="HIGH",
                     field_name="PRESENTATION_DATE",
                     description=(
                         f"İbraz süresi aşıldı. "
@@ -232,7 +227,6 @@ def _check_r7_partial_shipment(mt: dict, inv: dict) -> Optional[DiscrepancyFindi
             return DiscrepancyFinding(
                 rule_code="R7",
                 finding_type="R",
-                severity="HIGH",
                 field_name="AMOUNT",
                 description=(
                     f"Kısmi sevkiyata izin verilmemesine rağmen fatura tutarı LC miktarının altında. "
@@ -266,7 +260,6 @@ def _check_o72_goods_description(mt: dict, inv: dict) -> Optional[DiscrepancyFin
         return DiscrepancyFinding(
             rule_code="O72",
             finding_type="O",
-            severity="HIGH",
             field_name="GOODS_DESCRIPTION",
             description="Faturadaki mal tanımı akreditifteki (:45A:) ile uyumsuz.",
             mt_value=mt.get("goods_description", "")[:200],
@@ -293,7 +286,6 @@ def _check_o73_issuer(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O73",
             finding_type="O",
-            severity="HIGH",
             field_name="EXPORTER",
             description="Faturayı düzenleyen taraf (:59: lehtarı) ile uyuşmuyor.",
             mt_value=mt.get("beneficiary", ""),
@@ -319,7 +311,6 @@ def _check_o84_applicant_name(mt: dict, inv: dict) -> Optional[DiscrepancyFindin
         return DiscrepancyFinding(
             rule_code="O84",
             finding_type="O",
-            severity="HIGH",
             field_name="IMPORTER",
             description="Faturadaki alıcı/ithalatçı adı akreditifteki başvuru sahibi (:50:) ile uyuşmuyor.",
             mt_value=mt.get("applicant", ""),
@@ -342,7 +333,6 @@ def _check_o85_currency(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O85",
             finding_type="O",
-            severity="HIGH",
             field_name="CURRENCY",
             description=f"Fatura döviz birimi ({inv_currency}) akreditif döviz birimi ({lc_currency}) ile uyuşmuyor.",
             mt_value=lc_currency,
@@ -369,7 +359,6 @@ def _check_o89_beneficiary_name(mt: dict, inv: dict) -> Optional[DiscrepancyFind
         return DiscrepancyFinding(
             rule_code="O89",
             finding_type="O",
-            severity="HIGH",
             field_name="BENEFICIARY",
             description="(O89 — Lehtar Adı) Belgede yer alan lehtar bilgisi akreditifteki lehtar adı (:59:) ile uyuşmuyor.",
             mt_value=mt.get("beneficiary", ""),
@@ -399,7 +388,6 @@ def _check_o77_incoterms(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O77",
             finding_type="O",
-            severity="HIGH",
             field_name="INCOTERMS",
             description=f"(O77 — Kod Eşleşmesi) Faturadaki teslim koşulu ({inv_terms}) akreditifte belirtilen INCOTERMS ({mt_incoterm}) ile uyuşmuyor.",
             mt_value=mt_incoterm,
@@ -420,7 +408,6 @@ def _check_o76_declaration(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O76",
             finding_type="O",
-            severity="MEDIUM",
             field_name="DECLARATION_TEXT",
             description="Faturada lehtar beyanı bulunmamaktadır (akreditif :46A: bunu şart koşuyor).",
             mt_value="Beyan gerekli (:46A:)",
@@ -442,7 +429,6 @@ def _check_o77_incoterms_version(mt: dict, inv: dict) -> Optional[DiscrepancyFin
         return DiscrepancyFinding(
             rule_code="O77",
             finding_type="O",
-            severity="MEDIUM",
             field_name="INCOTERMS_YEAR",
             description=f"(O77 — Sürüm Atfı) Fatura, akreditifin istediği INCOTERMS {required_year} sürümüne atıfta bulunmamaktadır.",
             mt_value=f"INCOTERMS {required_year}",
@@ -467,7 +453,6 @@ def _check_o78_freight_insurance(mt: dict, inv: dict) -> Optional[DiscrepancyFin
         return DiscrepancyFinding(
             rule_code="O78",
             finding_type="O",
-            severity="LOW",
             field_name="FREIGHT_VALUE",
             description="Faturada navlun ve sigorta değeri ayrı ayrı gösterilmemiştir (CIF/CIP teslim koşulu bunu gerektirir).",
             mt_value="CIF/CIP – navlun + sigorta ayrı gösterilmeli",
@@ -489,7 +474,6 @@ def _check_o80_unit_price(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O80",
             finding_type="O",
-            severity="HIGH",
             field_name="UNIT_PRICE",
             description=f"Faturada belirtilen birim fiyat ({inv_price}) akreditifle ({mt_price}) uyuşmuyor.",
             mt_value=str(mt_price),
@@ -511,7 +495,6 @@ def _check_o81_quantity(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O81",
             finding_type="O",
-            severity="HIGH",
             field_name="QUANTITY",
             description=f"Faturada belirtilen mal miktarı ({inv_qty}) akreditifle ({mt_qty}) uyuşmuyor.",
             mt_value=str(mt_qty),
@@ -545,7 +528,6 @@ def _check_o87_extra_goods(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O87",
             finding_type="O",
-            severity="MEDIUM",
             field_name="GOODS_DESCRIPTION",
             description="Fatura, akreditifte belirtilmeyen ek mal/kalemler göstermektedir.",
             mt_value=mt.get("goods_description", "")[:200],
@@ -567,7 +549,6 @@ def _check_o89_advance_payment(mt: dict, inv: dict) -> Optional[DiscrepancyFindi
         return DiscrepancyFinding(
             rule_code="O89",
             finding_type="O",
-            severity="MEDIUM",
             field_name="ADVANCE_PAYMENT",
             description=f"(O89 — Peşin Ödeme) Fatura, akreditifte belirtilen peşin ödeme tutarını ({mt_advance}) göstermemektedir.",
             mt_value=mt_advance,
@@ -589,7 +570,6 @@ def _check_o90_discount(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
         return DiscrepancyFinding(
             rule_code="O90",
             finding_type="O",
-            severity="MEDIUM",
             field_name="DISCOUNT",
             description=f"Fatura, akreditifte belirtilen indirim tutarını ({mt_discount}) göstermemektedir.",
             mt_value=mt_discount,

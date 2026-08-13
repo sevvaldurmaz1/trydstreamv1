@@ -20,12 +20,6 @@ import type { DiscrepancyFinding } from '../../types/mt';
 
 // ── Sabit Renk Eşleşmesi ────────────────────────────────────────────────────
 
-const SEVERITY_CONFIG = {
-  HIGH: { color: 'error' as const, label: 'Kritik', icon: <ErrorOutlineIcon fontSize="small" /> },
-  MEDIUM: { color: 'warning' as const, label: 'Orta', icon: <WarningAmberOutlinedIcon fontSize="small" /> },
-  LOW: { color: 'default' as const, label: 'Düşük', icon: <WarningAmberOutlinedIcon fontSize="small" /> },
-};
-
 const FINDING_TYPE_CONFIG = {
   R: { color: 'error' as const, label: 'Zorunlu' },
   O: { color: 'primary' as const, label: 'İsteğe Bağlı' },
@@ -37,23 +31,11 @@ const FindingRow = ({ finding }: { finding: DiscrepancyFinding }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
 
-  const sev = SEVERITY_CONFIG[finding.severity] ?? SEVERITY_CONFIG.LOW;
   const ft = FINDING_TYPE_CONFIG[finding.findingType] ?? FINDING_TYPE_CONFIG.O;
 
   return (
     <>
-      <TableRow
-        hover
-        sx={{
-          borderLeft: `3px solid ${
-            finding.severity === 'HIGH'
-              ? theme.palette.error.main
-              : finding.severity === 'MEDIUM'
-              ? theme.palette.warning.main
-              : theme.palette.divider
-          }`,
-        }}
-      >
+      <TableRow hover>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
           <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
             <Chip
@@ -65,9 +47,6 @@ const FindingRow = ({ finding }: { finding: DiscrepancyFinding }) => {
             />
             <Chip label={ft.label} size="small" color={ft.color} variant="filled" sx={{ fontSize: '0.65rem' }} />
           </Box>
-        </TableCell>
-        <TableCell>
-          <Chip label={sev.label} size="small" color={sev.color} />
         </TableCell>
         <TableCell>
           <Typography variant="body2">{finding.description}</Typography>
@@ -101,7 +80,7 @@ const FindingRow = ({ finding }: { finding: DiscrepancyFinding }) => {
       {/* AI Açıklaması Satırı */}
       {finding.aiExplanation && (
         <TableRow>
-          <TableCell colSpan={6} sx={{ p: 0, border: 'none' }}>
+          <TableCell colSpan={5} sx={{ p: 0, border: 'none' }}>
             <Collapse in={expanded}>
               <Box
                 sx={{
@@ -249,7 +228,6 @@ const DiscrepancyReportPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Kural</TableCell>
-                  <TableCell>Önem</TableCell>
                   <TableCell>Açıklama</TableCell>
                   <TableCell>MT Değeri</TableCell>
                   <TableCell>Belge Değeri</TableCell>
@@ -281,7 +259,6 @@ const DiscrepancyReportPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Kural</TableCell>
-                  <TableCell>Önem</TableCell>
                   <TableCell>Açıklama</TableCell>
                   <TableCell>MT Değeri</TableCell>
                   <TableCell>Belge Değeri</TableCell>

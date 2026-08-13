@@ -30,7 +30,6 @@ public class DiscrepancyReportResponse {
         private Long id;
         private String ruleCode;
         private String findingType;     // R | O
-        private String severity;        // HIGH | MEDIUM | LOW
         private String fieldName;
         private String mtValue;
         private String documentValue;

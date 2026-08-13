@@ -85,7 +85,6 @@ class DiscrepancyWithFieldsRequest(BaseModel):
 class DiscrepancyFindingSchema(BaseModel):
     rule_code: str
     finding_type: str
-    severity: str
     field_name: str
     description: str
     mt_value: Optional[str] = None

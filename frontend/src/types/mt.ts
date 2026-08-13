@@ -26,7 +26,6 @@ export interface DiscrepancyFinding {
   id?: number;
   ruleCode: string;
   findingType: 'R' | 'O';
-  severity: 'HIGH' | 'MEDIUM' | 'LOW';
   fieldName: string;
   description: string;
   mtValue?: string;

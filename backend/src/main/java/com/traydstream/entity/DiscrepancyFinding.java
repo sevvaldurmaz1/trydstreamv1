@@ -30,10 +30,6 @@ public class DiscrepancyFinding {
     @Column(name = "finding_type", nullable = false, columnDefinition = "CHAR(1)")
     private String findingType;  // 'R' veya 'O'
 
-    @Column(name = "severity", nullable = false, length = 20)
-    @Builder.Default
-    private String severity = "MEDIUM";
-
     @Column(name = "field_name", length = 100)
     private String fieldName;
 

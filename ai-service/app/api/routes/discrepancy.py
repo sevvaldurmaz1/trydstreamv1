@@ -73,7 +73,6 @@ async def check_discrepancy(req: DiscrepancyCheckRequest):
         findings_out.append(DiscrepancyFindingSchema(
             rule_code=finding.rule_code,
             finding_type=finding.finding_type,
-            severity=finding.severity,
             field_name=finding.field_name,
             description=finding.description,
             mt_value=finding.mt_value,
@@ -132,7 +131,6 @@ async def check_discrepancy_with_fields(req: DiscrepancyWithFieldsRequest):
         findings_out.append(DiscrepancyFindingSchema(
             rule_code=finding.rule_code,
             finding_type=finding.finding_type,
-            severity=finding.severity,
             field_name=finding.field_name,
             description=finding.description,
             mt_value=finding.mt_value,
