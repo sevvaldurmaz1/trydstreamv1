@@ -14,7 +14,6 @@ const DocumentsPage = lazy(() => import('../pages/documents/DocumentsPage'));
 const DocumentUploadPage = lazy(() => import('../pages/documents/DocumentUploadPage'));
 const DocumentReviewPage = lazy(() => import('../pages/documents/DocumentReviewPage'));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'));
-const UsersPage = lazy(() => import('../pages/admin/UsersPage'));
 const MtKontrolPage = lazy(() => import('../pages/mt/MtKontrolPage'));
 const DiscrepancyReportPage = lazy(() => import('../pages/mt/DiscrepancyReportPage'));
 
@@ -70,14 +69,6 @@ const router = createBrowserRouter([
           {
             path: '/mt/report/:id',
             element: <Suspense fallback={<PageLoader />}><DiscrepancyReportPage /></Suspense>,
-          },
-          {
-            path: '/admin/users',
-            element: (
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <Suspense fallback={<PageLoader />}><UsersPage /></Suspense>
-              </ProtectedRoute>
-            ),
           },
         ],
       },

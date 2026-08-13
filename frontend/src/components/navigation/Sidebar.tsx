@@ -16,7 +16,6 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
-import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import CompareArrowsOutlinedIcon from '@mui/icons-material/CompareArrowsOutlined';
 import { useAuth } from '../../context/AuthContext';
 
@@ -37,10 +36,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Yükle', path: '/documents/upload', icon: <CloudUploadOutlinedIcon fontSize="small" /> },
   { label: 'MT Kontrol', path: '/mt/kontrol', icon: <CompareArrowsOutlinedIcon fontSize="small" /> },
   { label: 'Raporlar', path: '/reports', icon: <AssessmentOutlinedIcon fontSize="small" /> },
-];
-
-const ADMIN_ITEMS: NavItem[] = [
-  { label: 'Kullanıcılar', path: '/admin/users', icon: <PeopleOutlinedIcon fontSize="small" />, roles: ['ADMIN'] },
 ];
 
 interface SidebarProps {
@@ -139,21 +134,6 @@ const SidebarContent = ({ collapsed }: { collapsed: boolean }) => {
 
       <List dense disablePadding sx={{ flex: 1 }}>
         {NAV_ITEMS.map(renderItem)}
-
-        {user?.role === 'ADMIN' && (
-          <>
-            <Divider sx={{ mx: 1, my: 1 }} />
-            {!collapsed && (
-              <Typography
-                variant="caption"
-                sx={{ px: 3, py: 0.5, display: 'block', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}
-              >
-                Yönetim
-              </Typography>
-            )}
-            {ADMIN_ITEMS.map(renderItem)}
-          </>
-        )}
       </List>
     </Box>
   );
