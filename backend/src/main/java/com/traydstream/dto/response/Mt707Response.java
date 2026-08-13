@@ -13,20 +13,21 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Mt745Response {
+public class Mt707Response {
     private Long id;
     private Long mt700Id;
     private String mt700Reference;
     private String referenceNumber;
     private String relatedReference;
     private Boolean mt700AutoLinked;
-    private String claimingBank;
-    private String reimbursingBank;
+    private String amendmentNumber;
+    private LocalDate amendmentDate;
+    private LocalDate newExpiryDate;
     private String currency;
-    private BigDecimal amount;
-    private LocalDate valueDate;
-    private String status;
-    private String notes;
+    private BigDecimal amountIncrease;
+    private BigDecimal amountDecrease;
+    private BigDecimal newAmount;
+    private LocalDate newLatestShipmentDate;
+    private String narrative;
     private Instant createdAt;
-    private Instant updatedAt;
 }

@@ -1,12 +1,12 @@
 package com.traydstream.service;
 
-import com.traydstream.dto.request.Mt745Request;
-import com.traydstream.dto.response.Mt745Response;
-import com.traydstream.entity.Mt745Claim;
+import com.traydstream.dto.request.Mt707Request;
+import com.traydstream.dto.response.Mt707Response;
+import com.traydstream.entity.Mt707Amendment;
 import com.traydstream.entity.MtMessage;
 import com.traydstream.entity.User;
 import com.traydstream.exception.AppException;
-import com.traydstream.repository.Mt745Repository;
+import com.traydstream.repository.Mt707Repository;
 import com.traydstream.repository.MtMessageRepository;
 import com.traydstream.repository.UserRepository;
 import com.traydstream.security.UserPrincipal;
@@ -21,21 +21,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class Mt745Service {
+public class Mt707Service {
 
-    private static final Set<String> VALID_STATUSES = Set.of("PENDING", "APPROVED", "REJECTED", "PAID");
-
-    private final Mt745Repository mt745Repository;
+    private final Mt707Repository mt707Repository;
     private final MtMessageRepository mtMessageRepository;
     private final UserRepository userRepository;
     private final WebClient.Builder webClientBuilder;
@@ -44,18 +41,13 @@ public class Mt745Service {
     private String aiServiceUrl;
 
     @Transactional
-    public Mt745Response create(Mt745Request req) {
+    public Mt707Response create(Mt707Request req) {
         User user = getCurrentUser();
 
         Map<String, Object> parsed = callAiParse(req.getRawText());
 
         String referenceNumber = getString(parsed, "reference_number");
         String relatedReference = getString(parsed, "related_reference");
-        String currency = getString(parsed, "currency");
-        BigDecimal amount = getDecimal(parsed, "amount");
-        String reimbursingBank = getString(parsed, "reimbursing_bank");
-        String claimingBankBic = getString(parsed, "claiming_bank_bic");
-        String notes = getString(parsed, "notes");
 
         MtMessage mt700 = null;
         boolean autoLinked = false;
@@ -65,72 +57,59 @@ public class Mt745Service {
             autoLinked = mt700 != null;
         }
 
-        Mt745Claim claim = Mt745Claim.builder()
+        Mt707Amendment amendment = Mt707Amendment.builder()
                 .user(user)
                 .mt700(mt700)
                 .referenceNumber(referenceNumber)
                 .relatedReference(relatedReference)
                 .rawText(req.getRawText())
-                .claimingBank(claimingBankBic)
-                .reimbursingBank(reimbursingBank)
-                .currency(currency)
-                .amount(amount)
-                .notes(notes)
+                .amendmentNumber(getString(parsed, "amendment_number"))
+                .amendmentDate(getDate(parsed, "amendment_date"))
+                .newExpiryDate(getDate(parsed, "new_expiry_date"))
+                .currency(getString(parsed, "currency"))
+                .amountIncrease(getDecimal(parsed, "amount_increase"))
+                .amountDecrease(getDecimal(parsed, "amount_decrease"))
+                .newAmount(getDecimal(parsed, "new_amount"))
+                .newLatestShipmentDate(getDate(parsed, "new_latest_shipment_date"))
+                .narrative(getString(parsed, "narrative"))
                 .build();
 
-        claim = mt745Repository.save(claim);
-        log.info("MT745 ayrıştırıldı ve kaydedildi: id={}, ref={}, tutar={} {}, mt700Bağlantısı={}",
-                claim.getId(), referenceNumber, currency, amount, autoLinked ? mt700.getId() : "yok");
+        amendment = mt707Repository.save(amendment);
+        log.info("MT707 ayrıştırıldı ve kaydedildi: id={}, ref={}, mt700Bağlantısı={}",
+                amendment.getId(), referenceNumber, autoLinked ? mt700.getId() : "yok");
 
-        return toResponse(claim, autoLinked);
+        return toResponse(amendment, autoLinked);
     }
 
     @Transactional(readOnly = true)
-    public List<Mt745Response> listForCurrentUser() {
+    public List<Mt707Response> listForCurrentUser() {
         User user = getCurrentUser();
-        return mt745Repository.findByUserIdOrderByCreatedAtDesc(user.getId())
+        return mt707Repository.findByUserIdOrderByCreatedAtDesc(user.getId())
                 .stream()
-                .map(c -> toResponse(c, false))
+                .map(a -> toResponse(a, false))
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<Mt745Response> listByMt700(Long mt700Id) {
-        return mt745Repository.findByMt700IdOrderByCreatedAtDesc(mt700Id)
+    public List<Mt707Response> listByMt700(Long mt700Id) {
+        return mt707Repository.findByMt700IdOrderByCreatedAtDesc(mt700Id)
                 .stream()
-                .map(c -> toResponse(c, false))
+                .map(a -> toResponse(a, false))
                 .collect(Collectors.toList());
-    }
-
-    @Transactional
-    public Mt745Response updateStatus(Long id, String newStatus) {
-        if (newStatus == null || !VALID_STATUSES.contains(newStatus.toUpperCase())) {
-            throw new AppException("Geçersiz durum: " + newStatus, HttpStatus.BAD_REQUEST);
-        }
-
-        Mt745Claim claim = mt745Repository.findById(id)
-                .orElseThrow(() -> new AppException("Rambursman talebi bulunamadı: " + id, HttpStatus.NOT_FOUND));
-
-        claim.setStatus(newStatus.toUpperCase());
-        claim.setUpdatedAt(Instant.now());
-        claim = mt745Repository.save(claim);
-        log.info("MT745 durumu güncellendi: id={}, durum={}", id, claim.getStatus());
-
-        return toResponse(claim, false);
     }
 
     @Transactional
     public void delete(Long id) {
         User user = getCurrentUser();
-        Mt745Claim claim = mt745Repository.findById(id)
-                .orElseThrow(() -> new AppException("Rambursman talebi bulunamadı: " + id, HttpStatus.NOT_FOUND));
+        Mt707Amendment amendment = mt707Repository.findById(id)
+                .orElseThrow(() -> new AppException("MT707 değişikliği bulunamadı: " + id, HttpStatus.NOT_FOUND));
 
-        if (!claim.getUser().getId().equals(user.getId())) {
-            throw new AppException("Bu talebi silme yetkiniz yok", HttpStatus.FORBIDDEN);
+        if (!amendment.getUser().getId().equals(user.getId())) {
+            throw new AppException("Bu kaydı silme yetkiniz yok", HttpStatus.FORBIDDEN);
         }
 
-        mt745Repository.delete(claim);
-        log.info("MT745 talebi silindi: id={}", id);
+        mt707Repository.delete(amendment);
+        log.info("MT707 silindi: id={}", id);
     }
 
     // ── AI Servis Çağrısı ─────────────────────────────────────────────────────
@@ -141,19 +120,19 @@ public class Mt745Service {
         try {
             result = webClientBuilder.build()
                     .post()
-                    .uri(aiServiceUrl + "/mt/745/parse")
+                    .uri(aiServiceUrl + "/mt/707/parse")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(Map.of("raw_text", rawText))
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
                             response -> response.bodyToMono(String.class).map(body -> {
-                                log.error("AI servisi MT745 hata yanıtı [{}]: {}", response.statusCode(), body);
+                                log.error("AI servisi MT707 hata yanıtı [{}]: {}", response.statusCode(), body);
                                 return new RuntimeException("AI servisi [" + response.statusCode() + "]: " + body);
                             }))
                     .bodyToMono(Map.class)
                     .block();
         } catch (Exception e) {
-            log.error("AI servisi MT745 ayrıştırma hatası: {}", e.getMessage(), e);
+            log.error("AI servisi MT707 ayrıştırma hatası: {}", e.getMessage(), e);
             throw new AppException("AI servisi kullanılamıyor: " + e.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
         }
 
@@ -186,23 +165,30 @@ public class Mt745Service {
         try { return new BigDecimal(val.toString()); } catch (Exception e) { return null; }
     }
 
-    private Mt745Response toResponse(Mt745Claim c, boolean autoLinked) {
-        return Mt745Response.builder()
-                .id(c.getId())
-                .mt700Id(c.getMt700() != null ? c.getMt700().getId() : null)
-                .mt700Reference(c.getMt700() != null ? c.getMt700().getReferenceNumber() : null)
-                .referenceNumber(c.getReferenceNumber())
-                .relatedReference(c.getRelatedReference())
+    private LocalDate getDate(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        if (val == null) return null;
+        try { return LocalDate.parse(val.toString()); } catch (Exception e) { return null; }
+    }
+
+    private Mt707Response toResponse(Mt707Amendment a, boolean autoLinked) {
+        return Mt707Response.builder()
+                .id(a.getId())
+                .mt700Id(a.getMt700() != null ? a.getMt700().getId() : null)
+                .mt700Reference(a.getMt700() != null ? a.getMt700().getReferenceNumber() : null)
+                .referenceNumber(a.getReferenceNumber())
+                .relatedReference(a.getRelatedReference())
                 .mt700AutoLinked(autoLinked)
-                .claimingBank(c.getClaimingBank())
-                .reimbursingBank(c.getReimbursingBank())
-                .currency(c.getCurrency())
-                .amount(c.getAmount())
-                .valueDate(c.getValueDate())
-                .status(c.getStatus())
-                .notes(c.getNotes())
-                .createdAt(c.getCreatedAt())
-                .updatedAt(c.getUpdatedAt())
+                .amendmentNumber(a.getAmendmentNumber())
+                .amendmentDate(a.getAmendmentDate())
+                .newExpiryDate(a.getNewExpiryDate())
+                .currency(a.getCurrency())
+                .amountIncrease(a.getAmountIncrease())
+                .amountDecrease(a.getAmountDecrease())
+                .newAmount(a.getNewAmount())
+                .newLatestShipmentDate(a.getNewLatestShipmentDate())
+                .narrative(a.getNarrative())
+                .createdAt(a.getCreatedAt())
                 .build();
     }
 }

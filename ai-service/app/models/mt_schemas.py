@@ -83,26 +83,30 @@ class Mt799ParseResponse(BaseModel):
     parsed: Mt799ParsedFields
 
 
-# ─── MT 745 – Rambursman ──────────────────────────────────────────────────────
+# ─── MT 707 – Akreditif Değişiklik Bildirimi ─────────────────────────────────
 
-class Mt745ParseRequest(BaseModel):
-    raw_text: str = Field(..., description="Ham SWIFT MT745 metni")
+class Mt707ParseRequest(BaseModel):
+    raw_text: str = Field(..., description="Ham SWIFT MT707 metni")
 
 
-class Mt745ParsedFields(BaseModel):
+class Mt707ParsedFields(BaseModel):
     reference_number: Optional[str] = None
     related_reference: Optional[str] = None
+    amendment_number: Optional[str] = None
+    amendment_date: Optional[date] = None
+    new_expiry_date: Optional[date] = None
     currency: Optional[str] = None
-    amount: Optional[str] = None
-    reimbursing_bank: Optional[str] = None
-    claiming_bank_bic: Optional[str] = None
-    notes: Optional[str] = None
+    amount_increase: Optional[str] = None
+    amount_decrease: Optional[str] = None
+    new_amount: Optional[str] = None
+    new_latest_shipment_date: Optional[date] = None
+    narrative: Optional[str] = None
     raw_fields: dict[str, str] = Field(default_factory=dict)
 
 
-class Mt745ParseResponse(BaseModel):
+class Mt707ParseResponse(BaseModel):
     success: bool = True
-    parsed: Mt745ParsedFields
+    parsed: Mt707ParsedFields
 
 
 # ─── Aykırılık ──────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import apiClient from './api';
 import type { ApiResponse } from '../types';
-import type { MtMessage, DiscrepancyReport, Mt799Message, Mt745Claim } from '../types/mt';
+import type { MtMessage, DiscrepancyReport, Mt799Message, Mt707Amendment } from '../types/mt';
 
 // ── MT Mesajları ──────────────────────────────────────────────────
 
@@ -93,27 +93,23 @@ export const mt799Service = {
   },
 };
 
-// ── MT 745 (Rambursman Talepleri) ───────────────────────────────────
+// ── MT 707 (Akreditif Değişiklik Bildirimi) ─────────────────────────
 
-export const mt745Service = {
-  /** Ham SWIFT MT745 metnini ayrıştırır ve kaydeder */
-  parseAndSave: async (rawText: string): Promise<Mt745Claim> => {
-    const res = await apiClient.post<ApiResponse<Mt745Claim>>('/mt745', { rawText });
+export const mt707Service = {
+  /** Ham SWIFT MT707 metnini ayrıştırır ve kaydeder */
+  parseAndSave: async (rawText: string): Promise<Mt707Amendment> => {
+    const res = await apiClient.post<ApiResponse<Mt707Amendment>>('/mt707', { rawText });
     return res.data.data;
   },
-  list: async (): Promise<Mt745Claim[]> => {
-    const res = await apiClient.get<ApiResponse<Mt745Claim[]>>('/mt745');
+  list: async (): Promise<Mt707Amendment[]> => {
+    const res = await apiClient.get<ApiResponse<Mt707Amendment[]>>('/mt707');
     return res.data.data;
   },
-  listByMt700: async (mt700Id: number): Promise<Mt745Claim[]> => {
-    const res = await apiClient.get<ApiResponse<Mt745Claim[]>>(`/mt745/mt700/${mt700Id}`);
-    return res.data.data;
-  },
-  updateStatus: async (id: number, status: string): Promise<Mt745Claim> => {
-    const res = await apiClient.patch<ApiResponse<Mt745Claim>>(`/mt745/${id}/status`, { status });
+  listByMt700: async (mt700Id: number): Promise<Mt707Amendment[]> => {
+    const res = await apiClient.get<ApiResponse<Mt707Amendment[]>>(`/mt707/mt700/${mt700Id}`);
     return res.data.data;
   },
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/mt745/${id}`);
+    await apiClient.delete(`/mt707/${id}`);
   },
 };

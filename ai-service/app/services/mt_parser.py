@@ -321,31 +321,56 @@ def parse_mt799(raw_text: str) -> dict:
     return result
 
 
-# ─── MT 745 – Rambursman Talebi ──────────────────────────────────────────────
+# ─── MT 707 – Akreditif Değişiklik Bildirimi (Amendment) ─────────────────────
 
-def parse_mt745(raw_text: str) -> dict:
+def parse_mt707(raw_text: str) -> dict:
     """
-    MT745 (masraf/rambursman bildirimi) mesajını ayrıştırır.
+    MT707 (akreditife yapılan değişiklik bildirimi) mesajını ayrıştırır.
 
-    :20: referans, :21: ilişkili referans, :32B: döviz+tutar,
-    :57A:/:57D: rambursman bankası, :71B: masraf detayı/notlar.
+    :20: referans, :21: ilişkili referans (değiştirilen orijinal LC no'su),
+    :26E: değişiklik no'su, :30: değişiklik tarihi, :31E: yeni vade tarihi,
+    :32B:/:33B:/:34B: tutar artışı/azalışı/yeni tutar, :44C: yeni son yükleme
+    tarihi, :79: değişikliklerin serbest metin açıklaması.
     """
     raw_fields = _extract_body_fields(raw_text)
-    sender_bic, _ = _extract_header_bics(raw_text)
 
-    currency, amount = _parse_amount_field(raw_fields.get("32B", ""))
-    reimbursing_bank = (raw_fields.get("57A") or raw_fields.get("57D") or raw_fields.get("57") or "").strip() or None
+    amendment_date = _parse_swift_date(raw_fields.get("30", "")) if raw_fields.get("30") else None
+    new_expiry_date = _parse_swift_date(raw_fields.get("31E", "")) if raw_fields.get("31E") else None
+    new_shipment_date = _parse_swift_date(raw_fields.get("44C", "")) if raw_fields.get("44C") else None
+
+    currency = None
+    amount_increase = None
+    amount_decrease = None
+    new_amount = None
+
+    if raw_fields.get("32B"):
+        currency, amount_increase = _parse_amount_field(raw_fields["32B"])
+    if raw_fields.get("33B"):
+        c, amount_decrease = _parse_amount_field(raw_fields["33B"])
+        currency = currency or c
+    if raw_fields.get("34B"):
+        c, new_amount = _parse_amount_field(raw_fields["34B"])
+        currency = currency or c
+
+    narrative = raw_fields.get("79", "").strip() or None
+    if not narrative:
+        # :79: yoksa mal tanımı/ek koşul değişikliği metnini yedek olarak kullan
+        narrative = (raw_fields.get("45B") or raw_fields.get("47B") or "").strip() or None
 
     result = {
         "reference_number": raw_fields.get("20", "").strip() or None,
         "related_reference": raw_fields.get("21", "").strip() or None,
+        "amendment_number": raw_fields.get("26E", "").strip() or None,
+        "amendment_date": amendment_date,
+        "new_expiry_date": new_expiry_date,
         "currency": currency,
-        "amount": str(amount) if amount is not None else None,
-        "reimbursing_bank": reimbursing_bank,
-        "claiming_bank_bic": sender_bic,
-        "notes": raw_fields.get("71B", "").strip() or None,
+        "amount_increase": str(amount_increase) if amount_increase is not None else None,
+        "amount_decrease": str(amount_decrease) if amount_decrease is not None else None,
+        "new_amount": str(new_amount) if new_amount is not None else None,
+        "new_latest_shipment_date": new_shipment_date,
+        "narrative": narrative,
         "raw_fields": raw_fields,
     }
 
-    logger.info(f"MT745 ayrıştırıldı: ref={result['reference_number']}, tutar={result['currency']} {result['amount']}")
+    logger.info(f"MT707 ayrıştırıldı: ref={result['reference_number']}, related={result['related_reference']}, değişiklik no={result['amendment_number']}")
     return result

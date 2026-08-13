@@ -8,12 +8,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "mt745_claims")
+@Table(name = "mt707_amendments")
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Mt745Claim {
+public class Mt707Amendment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,36 +33,37 @@ public class Mt745Claim {
     @Column(name = "related_reference", length = 100)
     private String relatedReference;
 
-    @Column(name = "raw_text", columnDefinition = "TEXT")
+    @Column(name = "raw_text", nullable = false, columnDefinition = "TEXT")
     private String rawText;
 
-    @Column(name = "claiming_bank", length = 255)
-    private String claimingBank;
+    @Column(name = "amendment_number", length = 50)
+    private String amendmentNumber;
 
-    @Column(name = "reimbursing_bank", length = 255)
-    private String reimbursingBank;
+    @Column(name = "amendment_date")
+    private LocalDate amendmentDate;
+
+    @Column(name = "new_expiry_date")
+    private LocalDate newExpiryDate;
 
     @Column(name = "currency", length = 10)
     private String currency;
 
-    @Column(name = "amount", precision = 18, scale = 2)
-    private BigDecimal amount;
+    @Column(name = "amount_increase", precision = 18, scale = 2)
+    private BigDecimal amountIncrease;
 
-    @Column(name = "value_date")
-    private LocalDate valueDate;
+    @Column(name = "amount_decrease", precision = 18, scale = 2)
+    private BigDecimal amountDecrease;
 
-    @Column(name = "status", nullable = false, length = 30)
-    @Builder.Default
-    private String status = "PENDING";
+    @Column(name = "new_amount", precision = 18, scale = 2)
+    private BigDecimal newAmount;
 
-    @Column(name = "notes", columnDefinition = "TEXT")
-    private String notes;
+    @Column(name = "new_latest_shipment_date")
+    private LocalDate newLatestShipmentDate;
+
+    @Column(name = "narrative", columnDefinition = "TEXT")
+    private String narrative;
 
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();
-
-    @Column(name = "updated_at")
-    @Builder.Default
-    private Instant updatedAt = Instant.now();
 }

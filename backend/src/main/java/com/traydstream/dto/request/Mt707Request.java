@@ -5,9 +5,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class Mt745Request {
+public class Mt707Request {
 
-    @NotBlank(message = "MT745 metni boş olamaz")
-    @Size(min = 5, max = 50000, message = "MT745 metni 5-50000 karakter arasında olmalıdır")
+    @NotBlank(message = "MT707 metni boş olamaz")
+    @Size(min = 5, max = 50000, message = "MT707 metni 5-50000 karakter arasında olmalıdır")
     private String rawText;
 }

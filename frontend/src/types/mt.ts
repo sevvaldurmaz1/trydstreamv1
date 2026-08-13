@@ -67,20 +67,21 @@ export interface Mt799Message {
   createdAt: string;
 }
 
-export interface Mt745Claim {
+export interface Mt707Amendment {
   id: number;
   mt700Id?: number;
   mt700Reference?: string;
   referenceNumber?: string;
   relatedReference?: string;
   mt700AutoLinked?: boolean;
-  claimingBank?: string;
-  reimbursingBank?: string;
+  amendmentNumber?: string;
+  amendmentDate?: string;
+  newExpiryDate?: string;
   currency?: string;
-  amount?: number;
-  valueDate?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
-  notes?: string;
+  amountIncrease?: number;
+  amountDecrease?: number;
+  newAmount?: number;
+  newLatestShipmentDate?: string;
+  narrative?: string;
   createdAt: string;
-  updatedAt: string;
 }
