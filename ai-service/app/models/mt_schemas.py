@@ -47,6 +47,12 @@ class MtParsedFields(BaseModel):
     available_with: Optional[str] = None
     drafts_at: Optional[str] = None
     charges: Optional[str] = None
+    unit_price: Optional[str] = None
+    quantity: Optional[str] = None
+    advance_payment: Optional[str] = None
+    discount: Optional[str] = None
+    incoterms_year_required: Optional[str] = None
+    requires_declaration: Optional[bool] = None
     raw_fields: dict[str, str] = Field(default_factory=dict)
 
 

@@ -222,6 +222,38 @@ def parse_mt700(raw_text: str) -> dict:
     # :42C: – Poliçe Vadesi
     result["drafts_at"] = raw_fields.get("42C", raw_fields.get("42A", raw_fields.get("42D", ""))).strip()
 
+    # ── Serbest metinden türetilen ek değerler ──────────────────────────────
+    # MT700'de bu değerler için ayrı bir SWIFT alanı yok; :45A:/:46A:/:47A:
+    # serbest metninde geçiyorsa yakalanır, yoksa None kalır (kural tetiklenmez).
+    free_text = " ".join([
+        result.get("goods_description", ""),
+        result.get("documents_required", ""),
+        result.get("additional_conditions", ""),
+    ])
+
+    currency_prefix = r"(?:usd|eur|gbp|try)?\s*"
+
+    unit_price_match = re.search(r"unit\s*price[:\s]+" + currency_prefix + r"([0-9][0-9,\.]*)", free_text, re.IGNORECASE)
+    result["unit_price"] = unit_price_match.group(1) if unit_price_match else None
+
+    quantity_match = re.search(r"quantity[:\s]+([0-9][0-9,\.]*)", free_text, re.IGNORECASE)
+    result["quantity"] = quantity_match.group(1) if quantity_match else None
+
+    advance_payment_match = re.search(r"advance\s*payment[:\s]+" + currency_prefix + r"([0-9][0-9,\.]*)", free_text, re.IGNORECASE)
+    result["advance_payment"] = advance_payment_match.group(1) if advance_payment_match else None
+
+    discount_match = re.search(r"discount[:\s]+" + currency_prefix + r"([0-9][0-9,\.]*)", free_text, re.IGNORECASE)
+    result["discount"] = discount_match.group(1) if discount_match else None
+
+    incoterms_year_match = re.search(r"incoterms\s*(\d{4})", free_text, re.IGNORECASE)
+    result["incoterms_year_required"] = incoterms_year_match.group(1) if incoterms_year_match else None
+
+    # Fatura üzerinde lehtar beyanı isteniyor mu (:46A: gerekli belgeler listesinde geçiyorsa)
+    docs_upper = result.get("documents_required", "").upper()
+    result["requires_declaration"] = any(
+        kw in docs_upper for kw in ["BENEFICIARY'S DECLARATION", "BENEFICIARY DECLARATION", "SIGNED DECLARATION"]
+    )
+
     logger.info(
         f"MT700 ayrıştırıldı: ref={result.get('reference_number')}, "
         f"currency={result.get('lc_currency')}, amount={result.get('lc_amount')}, "

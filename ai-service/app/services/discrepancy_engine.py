@@ -371,7 +371,7 @@ def _check_o89_beneficiary_name(mt: dict, inv: dict) -> Optional[DiscrepancyFind
             finding_type="O",
             severity="HIGH",
             field_name="BENEFICIARY",
-            description="Belgede yer alan lehtar bilgisi akreditifteki lehtar adı (:59:) ile uyuşmuyor.",
+            description="(O89 — Lehtar Adı) Belgede yer alan lehtar bilgisi akreditifteki lehtar adı (:59:) ile uyuşmuyor.",
             mt_value=mt.get("beneficiary", ""),
             document_value=inv.get("BENEFICIARY") or inv.get("EXPORTER") or "",
             isbp_reference="ISBP C18",
@@ -401,10 +401,200 @@ def _check_o77_incoterms(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
             finding_type="O",
             severity="HIGH",
             field_name="INCOTERMS",
-            description=f"Faturadaki teslim koşulu ({inv_terms}) akreditifte belirtilen INCOTERMS ({mt_incoterm}) ile uyuşmuyor.",
+            description=f"(O77 — Kod Eşleşmesi) Faturadaki teslim koşulu ({inv_terms}) akreditifte belirtilen INCOTERMS ({mt_incoterm}) ile uyuşmuyor.",
             mt_value=mt_incoterm,
             document_value=inv_terms,
             isbp_reference="ISBP C6",
+            ucp_reference="UCP 600 Madde 18",
+        )
+    return None
+
+
+def _check_o76_declaration(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O76 – Lehtar beyanı kontrolü."""
+    if not mt.get("requires_declaration"):
+        return None  # Akreditif bir beyan istemiyorsa kontrol anlamsız
+
+    declaration = inv.get("DECLARATION_TEXT")
+    if not declaration:
+        return DiscrepancyFinding(
+            rule_code="O76",
+            finding_type="O",
+            severity="MEDIUM",
+            field_name="DECLARATION_TEXT",
+            description="Faturada lehtar beyanı bulunmamaktadır (akreditif :46A: bunu şart koşuyor).",
+            mt_value="Beyan gerekli (:46A:)",
+            document_value="Bulunamadı",
+            isbp_reference="ISBP C",
+            ucp_reference="UCP 600 Madde 14",
+        )
+    return None
+
+
+def _check_o77_incoterms_version(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O77 (v2) – INCOTERMS sürümüne atıf kontrolü."""
+    required_year = mt.get("incoterms_year_required")
+    if not required_year:
+        return None  # Akreditif belirli bir INCOTERMS sürümü istemiyorsa kontrol anlamsız
+
+    inv_year = inv.get("INCOTERMS_YEAR")
+    if not inv_year or inv_year != required_year:
+        return DiscrepancyFinding(
+            rule_code="O77",
+            finding_type="O",
+            severity="MEDIUM",
+            field_name="INCOTERMS_YEAR",
+            description=f"(O77 — Sürüm Atfı) Fatura, akreditifin istediği INCOTERMS {required_year} sürümüne atıfta bulunmamaktadır.",
+            mt_value=f"INCOTERMS {required_year}",
+            document_value=f"INCOTERMS {inv_year}" if inv_year else "Atıf yok",
+            isbp_reference="ISBP C6",
+            ucp_reference="UCP 600 Madde 18",
+        )
+    return None
+
+
+def _check_o78_freight_insurance(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O78 – Navlun/sigorta değerinin ayrı gösterilmesi kontrolü (CIF/CIP)."""
+    combined = _normalize(mt.get("goods_description", "")) + " " + _normalize(mt.get("additional_conditions", ""))
+    requires_breakdown = "CIF" in combined.split() or "CIP" in combined.split()
+    if not requires_breakdown:
+        return None  # Sadece CIF/CIP gibi navlun+sigorta dahil teslim koşullarında anlamlı
+
+    has_freight = bool(inv.get("FREIGHT_VALUE"))
+    has_insurance = bool(inv.get("INSURANCE_VALUE"))
+
+    if not (has_freight and has_insurance):
+        return DiscrepancyFinding(
+            rule_code="O78",
+            finding_type="O",
+            severity="LOW",
+            field_name="FREIGHT_VALUE",
+            description="Faturada navlun ve sigorta değeri ayrı ayrı gösterilmemiştir (CIF/CIP teslim koşulu bunu gerektirir).",
+            mt_value="CIF/CIP – navlun + sigorta ayrı gösterilmeli",
+            document_value=f"Navlun: {inv.get('FREIGHT_VALUE') or 'yok'}, Sigorta: {inv.get('INSURANCE_VALUE') or 'yok'}",
+            isbp_reference="ISBP C",
+            ucp_reference="UCP 600 Madde 18",
+        )
+    return None
+
+
+def _check_o80_unit_price(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O80 – Birim fiyat kontrolü."""
+    mt_price = _parse_decimal(mt.get("unit_price"))
+    inv_price = _parse_decimal(inv.get("UNIT_PRICE"))
+    if mt_price is None or inv_price is None:
+        return None
+
+    if mt_price != inv_price:
+        return DiscrepancyFinding(
+            rule_code="O80",
+            finding_type="O",
+            severity="HIGH",
+            field_name="UNIT_PRICE",
+            description=f"Faturada belirtilen birim fiyat ({inv_price}) akreditifle ({mt_price}) uyuşmuyor.",
+            mt_value=str(mt_price),
+            document_value=str(inv_price),
+            isbp_reference="ISBP C",
+            ucp_reference="UCP 600 Madde 18",
+        )
+    return None
+
+
+def _check_o81_quantity(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O81 – Mal miktarı kontrolü."""
+    mt_qty = _parse_decimal(mt.get("quantity"))
+    inv_qty = _parse_decimal(inv.get("QUANTITY"))
+    if mt_qty is None or inv_qty is None:
+        return None
+
+    if mt_qty != inv_qty:
+        return DiscrepancyFinding(
+            rule_code="O81",
+            finding_type="O",
+            severity="HIGH",
+            field_name="QUANTITY",
+            description=f"Faturada belirtilen mal miktarı ({inv_qty}) akreditifle ({mt_qty}) uyuşmuyor.",
+            mt_value=str(mt_qty),
+            document_value=str(inv_qty),
+            isbp_reference="ISBP C",
+            ucp_reference="UCP 600 Madde 18",
+        )
+    return None
+
+
+def _check_o87_extra_goods(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O87 – Akreditifte belirtilmeyen mal kontrolü."""
+    mt_goods = _normalize(mt.get("goods_description", ""))
+    inv_goods = _normalize(inv.get("GOODS_DESCRIPTION") or inv.get("DESCRIPTION") or "")
+
+    if not mt_goods or not inv_goods:
+        return None
+
+    mt_keywords = set(mt_goods.split())
+    inv_keywords = set(inv_goods.split())
+    if len(mt_keywords) <= 2 or len(inv_keywords) <= 2:
+        return None
+
+    common = mt_keywords & inv_keywords
+    if len(common) == 0:
+        return None  # Tam uyumsuzluk zaten O72 tarafından yakalanıyor
+
+    extra = inv_keywords - mt_keywords
+    # Faturadaki kelimelerin büyük kısmı akreditifte hiç geçmiyorsa, fazladan mal olabilir
+    if len(extra) / len(inv_keywords) > 0.6:
+        return DiscrepancyFinding(
+            rule_code="O87",
+            finding_type="O",
+            severity="MEDIUM",
+            field_name="GOODS_DESCRIPTION",
+            description="Fatura, akreditifte belirtilmeyen ek mal/kalemler göstermektedir.",
+            mt_value=mt.get("goods_description", "")[:200],
+            document_value=inv.get("GOODS_DESCRIPTION") or inv.get("DESCRIPTION") or "",
+            isbp_reference="ISBP C1",
+            ucp_reference="UCP 600 Madde 18",
+        )
+    return None
+
+
+def _check_o89_advance_payment(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O89 (v2) – Peşin ödeme tutarı kontrolü."""
+    mt_advance = mt.get("advance_payment")
+    if not mt_advance:
+        return None  # Akreditif peşin ödeme belirtmiyorsa kontrol anlamsız
+
+    inv_advance = inv.get("ADVANCE_PAYMENT")
+    if not inv_advance:
+        return DiscrepancyFinding(
+            rule_code="O89",
+            finding_type="O",
+            severity="MEDIUM",
+            field_name="ADVANCE_PAYMENT",
+            description=f"(O89 — Peşin Ödeme) Fatura, akreditifte belirtilen peşin ödeme tutarını ({mt_advance}) göstermemektedir.",
+            mt_value=mt_advance,
+            document_value="Bulunamadı",
+            isbp_reference="ISBP C",
+            ucp_reference="UCP 600 Madde 18",
+        )
+    return None
+
+
+def _check_o90_discount(mt: dict, inv: dict) -> Optional[DiscrepancyFinding]:
+    """O90 – İndirim tutarı kontrolü."""
+    mt_discount = mt.get("discount")
+    if not mt_discount:
+        return None  # Akreditif indirim belirtmiyorsa kontrol anlamsız
+
+    inv_discount = inv.get("DISCOUNT")
+    if not inv_discount:
+        return DiscrepancyFinding(
+            rule_code="O90",
+            finding_type="O",
+            severity="MEDIUM",
+            field_name="DISCOUNT",
+            description=f"Fatura, akreditifte belirtilen indirim tutarını ({mt_discount}) göstermemektedir.",
+            mt_value=mt_discount,
+            document_value="Bulunamadı",
+            isbp_reference="ISBP C",
             ucp_reference="UCP 600 Madde 18",
         )
     return None
@@ -454,6 +644,14 @@ _OPTIONAL_RULES_INVOICE = [
     _check_o85_currency,
     _check_o89_beneficiary_name,
     _check_o77_incoterms,
+    _check_o76_declaration,
+    _check_o77_incoterms_version,
+    _check_o78_freight_insurance,
+    _check_o80_unit_price,
+    _check_o81_quantity,
+    _check_o87_extra_goods,
+    _check_o89_advance_payment,
+    _check_o90_discount,
 ]
 
 

@@ -68,6 +68,33 @@ FIELD_PATTERNS: dict[str, list[str]] = {
     "PORT_OF_DISCHARGE": [
         r"port\s*of\s*discharge[:\s]+([A-Za-z\s,]+)",
     ],
+    "DECLARATION_TEXT": [
+        r"(we\s+(?:hereby\s+)?(?:certify|declare)[^\n]{0,200})",
+        r"(beyan\s+ederiz[^\n]{0,200})",
+    ],
+    "INCOTERMS_YEAR": [
+        r"incoterms\s*(\d{4})",
+    ],
+    "UNIT_PRICE": [
+        r"unit\s*price[:\s]+(?:usd|eur|gbp|try)?\s*([0-9][0-9,\.]*)",
+        r"price\s*per\s*unit[:\s]+(?:usd|eur|gbp|try)?\s*([0-9][0-9,\.]*)",
+    ],
+    "QUANTITY": [
+        r"quantity[:\s]+([0-9][0-9,\.]*)",
+        r"qty[:\s]+([0-9][0-9,\.]*)",
+    ],
+    "FREIGHT_VALUE": [
+        r"freight[:\s]+(?:usd|eur|gbp|try)?\s*([0-9][0-9,\.]*)",
+    ],
+    "INSURANCE_VALUE": [
+        r"insurance(?:\s*(?:premium|value))?[:\s]+(?:usd|eur|gbp|try)?\s*([0-9][0-9,\.]*)",
+    ],
+    "ADVANCE_PAYMENT": [
+        r"advance\s*payment[:\s]+(?:usd|eur|gbp|try)?\s*([0-9][0-9,\.]*)",
+    ],
+    "DISCOUNT": [
+        r"discount[:\s]+(?:usd|eur|gbp|try)?\s*([0-9][0-9,\.]*)",
+    ],
 }
 
 # Fallback score used only when no real word-level confidence is available
