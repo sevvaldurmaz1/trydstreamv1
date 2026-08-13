@@ -26,6 +26,12 @@ export const mtService = {
     return res.data.data;
   },
 
+  /** Varolan MT mesajını düzenle ve yeniden ayrıştır */
+  updateMt: async (id: number, rawText: string): Promise<MtMessage> => {
+    const res = await apiClient.put<ApiResponse<MtMessage>>(`/mt/${id}`, { rawText });
+    return res.data.data;
+  },
+
   // ── Aykırılık Kontrolleri ──────────────────────────────────────
 
   /** MT ve belge arasında aykırılık kontrolü yap */

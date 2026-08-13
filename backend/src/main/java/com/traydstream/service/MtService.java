@@ -88,6 +88,47 @@ public class MtService {
         return toResponse(mt, ((Number) aiResponse.getOrDefault("field_count", 0)).intValue());
     }
 
+    @Transactional
+    public MtMessageResponse updateAndReparse(Long id, MtParseRequest req) {
+        MtMessage existing = mtMessageRepository.findById(id)
+                .orElseThrow(() -> new AppException("MT mesajı bulunamadı: " + id, HttpStatus.NOT_FOUND));
+
+        Map<String, Object> aiResponse = callAiParse(req.getRawText());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parsed = (Map<String, Object>) aiResponse.getOrDefault("parsed", new HashMap<>());
+
+        existing.setRawText(req.getRawText());
+        existing.setReferenceNumber(getString(parsed, "reference_number"));
+        existing.setLcCurrency(getString(parsed, "lc_currency"));
+        existing.setLcAmount(getDecimal(parsed, "lc_amount"));
+        existing.setTolerancePositive(getDecimal(parsed, "tolerance_positive"));
+        existing.setToleranceNegative(getDecimal(parsed, "tolerance_negative"));
+        existing.setApplicant(getString(parsed, "applicant"));
+        existing.setBeneficiary(getString(parsed, "beneficiary"));
+        existing.setGoodsDescription(getString(parsed, "goods_description"));
+        existing.setDocumentsRequired(getString(parsed, "documents_required"));
+        existing.setPartialShipments(getString(parsed, "partial_shipments"));
+        existing.setTranshipment(getString(parsed, "transhipment"));
+        existing.setPortOfLoading(getString(parsed, "port_of_loading"));
+        existing.setPortOfDischarge(getString(parsed, "port_of_discharge"));
+        existing.setApplicableRules(getString(parsed, "applicable_rules"));
+        existing.setPresentationPeriodDays(getInt(parsed, "presentation_period_days"));
+
+        String expiryStr = getString(parsed, "lc_expiry_date");
+        if (expiryStr != null) {
+            try { existing.setLcExpiryDate(java.time.LocalDate.parse(expiryStr)); } catch (Exception ignored) {}
+        }
+        String shipmentStr = getString(parsed, "latest_shipment_date");
+        if (shipmentStr != null) {
+            try { existing.setLatestShipmentDate(java.time.LocalDate.parse(shipmentStr)); } catch (Exception ignored) {}
+        }
+
+        existing = mtMessageRepository.save(existing);
+        log.info("MT700 güncellendi: id={}, ref={}", existing.getId(), existing.getReferenceNumber());
+        return toResponse(existing, ((Number) aiResponse.getOrDefault("field_count", 0)).intValue());
+    }
+
     // ── Listeleme ─────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)

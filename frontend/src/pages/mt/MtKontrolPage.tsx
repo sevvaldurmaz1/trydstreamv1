@@ -9,6 +9,7 @@ import {
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import DocumentScannerOutlinedIcon from '@mui/icons-material/DocumentScannerOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { mtService } from '../../services/mtService';
@@ -34,6 +35,7 @@ const MtKontrolPage = () => {
   // Step 1 – MT
   const [mtText, setMtText] = useState('');
   const [parsedMt, setParsedMt] = useState<MtMessage | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Step 2 – Belge
   const [selectedDocId, setSelectedDocId] = useState<number | ''>('');
@@ -60,6 +62,19 @@ const MtKontrolPage = () => {
     },
     onError: (err: any) => {
       setError(err?.response?.data?.message ?? 'MT ayrıştırılamadı.');
+    },
+  });
+
+  // MT düzenleme ve yeniden ayrıştırma
+  const updateMutation = useMutation({
+    mutationFn: () => mtService.updateMt(parsedMt!.id, mtText),
+    onSuccess: (data) => {
+      setParsedMt(data);
+      setIsEditing(false);
+      setError(null);
+    },
+    onError: (err: any) => {
+      setError(err?.response?.data?.message ?? 'MT güncellenemedi.');
     },
   });
 
@@ -147,6 +162,12 @@ IZMIR TURKEY`;
                 )}
               </Box>
 
+              {parsedMt && isEditing && (
+                <Alert severity="warning" sx={{ mb: 1 }}>
+                  MT metnini düzenleyin, ardından "Kaydet &amp; Yeniden Ayrıştır" butonuna tıklayın.
+                </Alert>
+              )}
+
               <TextField
                 multiline
                 rows={14}
@@ -155,7 +176,7 @@ IZMIR TURKEY`;
                 placeholder={MT_PLACEHOLDER}
                 value={mtText}
                 onChange={(e) => setMtText(e.target.value)}
-                disabled={!!parsedMt}
+                disabled={!!parsedMt && !isEditing}
                 InputProps={{
                   sx: {
                     fontFamily: 'monospace',
@@ -181,10 +202,40 @@ IZMIR TURKEY`;
                       setParsedMt(null);
                       setMtText('');
                       setActiveStep(0);
+                      setIsEditing(false);
                     }}
                   >
                     Temizle
                   </Button>
+                )}
+                {parsedMt && !isEditing && (
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    startIcon={<EditOutlinedIcon />}
+                    onClick={() => setIsEditing(true)}
+                  >
+                    Düzenle
+                  </Button>
+                )}
+                {parsedMt && isEditing && (
+                  <>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      onClick={() => updateMutation.mutate()}
+                      disabled={!mtText.trim() || updateMutation.isPending}
+                      startIcon={updateMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
+                      {updateMutation.isPending ? 'Yeniden Ayrıştırılıyor…' : 'Kaydet & Yeniden Ayrıştır'}
+                    </Button>
+                    <Button
+                      variant="text"
+                      onClick={() => setIsEditing(false)}
+                    >
+                      İptal
+                    </Button>
+                  </>
                 )}
               </Box>
             </CardContent>

@@ -13,4 +13,6 @@ public class MtParseRequest {
 
     /** İlişkili belge ID (opsiyonel – MT ile birlikte belge de bağlanmak isteniyorsa) */
     private Long documentId;
+
+    private Long id; // varolan MT'yi güncellemek için (null = yeni kayıt)
 }

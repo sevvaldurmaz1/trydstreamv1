@@ -30,6 +30,15 @@ public class MtController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<MtMessageResponse>> updateMt(
+            @PathVariable Long id,
+            @Valid @RequestBody MtParseRequest req) {
+        MtMessageResponse response = mtService.updateAndReparse(id, req);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     /**
      * Mevcut kullanıcının tüm MT mesajlarını listeler.
      */
