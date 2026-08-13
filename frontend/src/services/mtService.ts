@@ -1,6 +1,6 @@
 import apiClient from './api';
 import type { ApiResponse } from '../types';
-import type { MtMessage, DiscrepancyReport } from '../types/mt';
+import type { MtMessage, DiscrepancyReport, Mt799Message, Mt745Claim } from '../types/mt';
 
 // ── MT Mesajları ──────────────────────────────────────────────────
 
@@ -69,5 +69,49 @@ export const mtService = {
   getReportById: async (id: number): Promise<DiscrepancyReport> => {
     const res = await apiClient.get<ApiResponse<DiscrepancyReport>>(`/discrepancy/${id}`);
     return res.data.data;
+  },
+};
+
+// ── MT 799 (Serbest Format Mesajlar) ────────────────────────────────
+
+export const mt799Service = {
+  create: async (data: Partial<Mt799Message> & { messageText: string }): Promise<Mt799Message> => {
+    const res = await apiClient.post<ApiResponse<Mt799Message>>('/mt799', data);
+    return res.data.data;
+  },
+  list: async (): Promise<Mt799Message[]> => {
+    const res = await apiClient.get<ApiResponse<Mt799Message[]>>('/mt799');
+    return res.data.data;
+  },
+  listByMt700: async (mt700Id: number): Promise<Mt799Message[]> => {
+    const res = await apiClient.get<ApiResponse<Mt799Message[]>>(`/mt799/mt700/${mt700Id}`);
+    return res.data.data;
+  },
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/mt799/${id}`);
+  },
+};
+
+// ── MT 745 (Rambursman Talepleri) ───────────────────────────────────
+
+export const mt745Service = {
+  create: async (data: Omit<Mt745Claim, 'id' | 'status' | 'createdAt' | 'updatedAt'>): Promise<Mt745Claim> => {
+    const res = await apiClient.post<ApiResponse<Mt745Claim>>('/mt745', data);
+    return res.data.data;
+  },
+  list: async (): Promise<Mt745Claim[]> => {
+    const res = await apiClient.get<ApiResponse<Mt745Claim[]>>('/mt745');
+    return res.data.data;
+  },
+  listByMt700: async (mt700Id: number): Promise<Mt745Claim[]> => {
+    const res = await apiClient.get<ApiResponse<Mt745Claim[]>>(`/mt745/mt700/${mt700Id}`);
+    return res.data.data;
+  },
+  updateStatus: async (id: number, status: string): Promise<Mt745Claim> => {
+    const res = await apiClient.patch<ApiResponse<Mt745Claim>>(`/mt745/${id}/status`, { status });
+    return res.data.data;
+  },
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/mt745/${id}`);
   },
 };

@@ -17,6 +17,8 @@ import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import CompareArrowsOutlinedIcon from '@mui/icons-material/CompareArrowsOutlined';
+import MessageOutlinedIcon from '@mui/icons-material/MessageOutlined';
+import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined';
 import { useAuth } from '../../context/AuthContext';
 
 // ─────────────────────────────────────────────────────────────────
@@ -35,6 +37,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Belgeler', path: '/documents', icon: <FolderOutlinedIcon fontSize="small" /> },
   { label: 'Yükle', path: '/documents/upload', icon: <CloudUploadOutlinedIcon fontSize="small" /> },
   { label: 'MT Kontrol', path: '/mt/kontrol', icon: <CompareArrowsOutlinedIcon fontSize="small" /> },
+  { label: 'MT Mesajları', path: '/mt/mesajlar', icon: <MessageOutlinedIcon fontSize="small" /> },
+  { label: 'Rambursman', path: '/mt/rambursman', icon: <AccountBalanceOutlinedIcon fontSize="small" /> },
   { label: 'Raporlar', path: '/reports', icon: <AssessmentOutlinedIcon fontSize="small" /> },
 ];
 

@@ -16,6 +16,8 @@ const DocumentReviewPage = lazy(() => import('../pages/documents/DocumentReviewP
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'));
 const MtKontrolPage = lazy(() => import('../pages/mt/MtKontrolPage'));
 const DiscrepancyReportPage = lazy(() => import('../pages/mt/DiscrepancyReportPage'));
+const Mt799Page = lazy(() => import('../pages/mt/Mt799Page'));
+const Mt745Page = lazy(() => import('../pages/mt/Mt745Page'));
 
 const PageLoader = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -69,6 +71,14 @@ const router = createBrowserRouter([
           {
             path: '/mt/report/:id',
             element: <Suspense fallback={<PageLoader />}><DiscrepancyReportPage /></Suspense>,
+          },
+          {
+            path: '/mt/mesajlar',
+            element: <Suspense fallback={<PageLoader />}><Mt799Page /></Suspense>,
+          },
+          {
+            path: '/mt/rambursman',
+            element: <Suspense fallback={<PageLoader />}><Mt745Page /></Suspense>,
           },
         ],
       },
