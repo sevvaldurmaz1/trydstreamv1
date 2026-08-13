@@ -63,6 +63,48 @@ class MtParseResponse(BaseModel):
     field_count: int = 0
 
 
+# ─── MT 799 – Serbest Format ─────────────────────────────────────────────────
+
+class Mt799ParseRequest(BaseModel):
+    raw_text: str = Field(..., description="Ham SWIFT MT799 metni")
+
+
+class Mt799ParsedFields(BaseModel):
+    reference_number: Optional[str] = None
+    related_reference: Optional[str] = None
+    narrative: Optional[str] = None
+    sender_bic: Optional[str] = None
+    receiver_bic: Optional[str] = None
+    raw_fields: dict[str, str] = Field(default_factory=dict)
+
+
+class Mt799ParseResponse(BaseModel):
+    success: bool = True
+    parsed: Mt799ParsedFields
+
+
+# ─── MT 745 – Rambursman ──────────────────────────────────────────────────────
+
+class Mt745ParseRequest(BaseModel):
+    raw_text: str = Field(..., description="Ham SWIFT MT745 metni")
+
+
+class Mt745ParsedFields(BaseModel):
+    reference_number: Optional[str] = None
+    related_reference: Optional[str] = None
+    currency: Optional[str] = None
+    amount: Optional[str] = None
+    reimbursing_bank: Optional[str] = None
+    claiming_bank_bic: Optional[str] = None
+    notes: Optional[str] = None
+    raw_fields: dict[str, str] = Field(default_factory=dict)
+
+
+class Mt745ParseResponse(BaseModel):
+    success: bool = True
+    parsed: Mt745ParsedFields
+
+
 # ─── Aykırılık ──────────────────────────────────────────────────────────────
 
 class DiscrepancyCheckRequest(BaseModel):

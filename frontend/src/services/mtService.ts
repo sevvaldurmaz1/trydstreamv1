@@ -75,8 +75,9 @@ export const mtService = {
 // ── MT 799 (Serbest Format Mesajlar) ────────────────────────────────
 
 export const mt799Service = {
-  create: async (data: Partial<Mt799Message> & { messageText: string }): Promise<Mt799Message> => {
-    const res = await apiClient.post<ApiResponse<Mt799Message>>('/mt799', data);
+  /** Ham SWIFT MT799 metnini ayrıştırır ve kaydeder */
+  parseAndSave: async (rawText: string): Promise<Mt799Message> => {
+    const res = await apiClient.post<ApiResponse<Mt799Message>>('/mt799', { rawText });
     return res.data.data;
   },
   list: async (): Promise<Mt799Message[]> => {
@@ -95,8 +96,9 @@ export const mt799Service = {
 // ── MT 745 (Rambursman Talepleri) ───────────────────────────────────
 
 export const mt745Service = {
-  create: async (data: Omit<Mt745Claim, 'id' | 'status' | 'createdAt' | 'updatedAt'>): Promise<Mt745Claim> => {
-    const res = await apiClient.post<ApiResponse<Mt745Claim>>('/mt745', data);
+  /** Ham SWIFT MT745 metnini ayrıştırır ve kaydeder */
+  parseAndSave: async (rawText: string): Promise<Mt745Claim> => {
+    const res = await apiClient.post<ApiResponse<Mt745Claim>>('/mt745', { rawText });
     return res.data.data;
   },
   list: async (): Promise<Mt745Claim[]> => {

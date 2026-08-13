@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MtMessageRepository extends JpaRepository<MtMessage, Long> {
@@ -14,4 +15,6 @@ public interface MtMessageRepository extends JpaRepository<MtMessage, Long> {
 
     @Query("SELECT m FROM MtMessage m WHERE m.user.id = :userId ORDER BY m.createdAt DESC LIMIT 10")
     List<MtMessage> findTop10ByUserId(Long userId);
+
+    Optional<MtMessage> findFirstByReferenceNumberIgnoreCaseOrderByCreatedAtDesc(String referenceNumber);
 }

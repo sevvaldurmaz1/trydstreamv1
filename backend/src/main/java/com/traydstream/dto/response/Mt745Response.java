@@ -18,6 +18,8 @@ public class Mt745Response {
     private Long mt700Id;
     private String mt700Reference;
     private String referenceNumber;
+    private String relatedReference;
+    private Boolean mt700AutoLinked;
     private String claimingBank;
     private String reimbursingBank;
     private String currency;

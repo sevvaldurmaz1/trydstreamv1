@@ -30,6 +30,12 @@ public class Mt745Claim {
     @Column(name = "reference_number", length = 100)
     private String referenceNumber;
 
+    @Column(name = "related_reference", length = 100)
+    private String relatedReference;
+
+    @Column(name = "raw_text", columnDefinition = "TEXT")
+    private String rawText;
+
     @Column(name = "claiming_bank", length = 255)
     private String claimingBank;
 

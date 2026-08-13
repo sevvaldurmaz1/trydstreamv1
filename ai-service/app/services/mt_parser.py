@@ -261,3 +261,91 @@ def parse_mt700(raw_text: str) -> dict:
     )
 
     return result
+
+
+# ─── Ortak Zarf Yardımcıları ────────────────────────────────────────────────
+
+_BIC_PATTERN = re.compile(r"\b[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b")
+
+
+def _extract_body_fields(raw_text: str) -> dict[str, str]:
+    """{1:...}{2:...}{4:...-} zarfını soyar, :TAG: alanlarını çıkarır."""
+    raw = raw_text.strip()
+    body_match = re.search(r"\{4:(.*?)(-\}|\Z)", raw, re.DOTALL)
+    body = body_match.group(1) if body_match else raw
+
+    raw_fields: dict[str, str] = {}
+    for m in FIELD_PATTERN.finditer(body):
+        raw_fields[m.group(1)] = _clean_multiline(m.group(2))
+    return raw_fields
+
+
+def _extract_header_bics(raw_text: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    {1:}/{2:} başlık bloklarından gönderen/alıcı BIC'i best-effort çıkarır.
+    Zarf yoksa (sadece :TAG: gövdesi yapıştırıldıysa) ikisi de None döner.
+    """
+    header_match = re.search(r"^(.*?)\{4:", raw_text.strip(), re.DOTALL)
+    if not header_match:
+        return None, None
+
+    header = header_match.group(1)
+    bics = _BIC_PATTERN.findall(header)
+    sender = bics[0] if len(bics) > 0 else None
+    receiver = bics[1] if len(bics) > 1 else None
+    return sender, receiver
+
+
+# ─── MT 799 – Serbest Format Mesaj ───────────────────────────────────────────
+
+def parse_mt799(raw_text: str) -> dict:
+    """
+    MT799 (serbest format) mesajını ayrıştırır.
+
+    Sabit alan yapısı yoktur; sadece :20: (referans), :21: (ilişkili referans,
+    genelde bağlı MT700'ün LC no'su) ve :79: (serbest metin) standarttır.
+    """
+    raw_fields = _extract_body_fields(raw_text)
+    sender_bic, receiver_bic = _extract_header_bics(raw_text)
+
+    result = {
+        "reference_number": raw_fields.get("20", "").strip() or None,
+        "related_reference": raw_fields.get("21", "").strip() or None,
+        "narrative": raw_fields.get("79", "").strip() or None,
+        "sender_bic": sender_bic,
+        "receiver_bic": receiver_bic,
+        "raw_fields": raw_fields,
+    }
+
+    logger.info(f"MT799 ayrıştırıldı: ref={result['reference_number']}, related={result['related_reference']}")
+    return result
+
+
+# ─── MT 745 – Rambursman Talebi ──────────────────────────────────────────────
+
+def parse_mt745(raw_text: str) -> dict:
+    """
+    MT745 (masraf/rambursman bildirimi) mesajını ayrıştırır.
+
+    :20: referans, :21: ilişkili referans, :32B: döviz+tutar,
+    :57A:/:57D: rambursman bankası, :71B: masraf detayı/notlar.
+    """
+    raw_fields = _extract_body_fields(raw_text)
+    sender_bic, _ = _extract_header_bics(raw_text)
+
+    currency, amount = _parse_amount_field(raw_fields.get("32B", ""))
+    reimbursing_bank = (raw_fields.get("57A") or raw_fields.get("57D") or raw_fields.get("57") or "").strip() or None
+
+    result = {
+        "reference_number": raw_fields.get("20", "").strip() or None,
+        "related_reference": raw_fields.get("21", "").strip() or None,
+        "currency": currency,
+        "amount": str(amount) if amount is not None else None,
+        "reimbursing_bank": reimbursing_bank,
+        "claiming_bank_bic": sender_bic,
+        "notes": raw_fields.get("71B", "").strip() or None,
+        "raw_fields": raw_fields,
+    }
+
+    logger.info(f"MT745 ayrıştırıldı: ref={result['reference_number']}, tutar={result['currency']} {result['amount']}")
+    return result

@@ -28,6 +28,12 @@ public class Mt799Message {
     @Column(name = "reference_number", length = 100)
     private String referenceNumber;
 
+    @Column(name = "related_reference", length = 100)
+    private String relatedReference;
+
+    @Column(name = "raw_text", columnDefinition = "TEXT")
+    private String rawText;
+
     @Column(name = "sender_bic", length = 20)
     private String senderBic;
 

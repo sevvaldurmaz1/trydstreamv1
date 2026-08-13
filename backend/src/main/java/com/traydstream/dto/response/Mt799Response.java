@@ -16,6 +16,8 @@ public class Mt799Response {
     private Long mt700Id;
     private String mt700Reference;
     private String referenceNumber;
+    private String relatedReference;
+    private Boolean mt700AutoLinked;
     private String senderBic;
     private String receiverBic;
     private String subject;

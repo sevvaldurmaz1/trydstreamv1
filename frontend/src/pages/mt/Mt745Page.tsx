@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
   Box, Card, CardContent, Typography, TextField, Button,
-  MenuItem, Select, FormControl, InputLabel, Alert,
-  CircularProgress, Grid, Table, TableHead, TableBody, TableRow,
-  TableCell, Chip, IconButton,
+  Select, MenuItem, Alert, CircularProgress, Grid, Table, TableHead,
+  TableBody, TableRow, TableCell, Chip, IconButton,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import LinkIcon from '@mui/icons-material/Link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { mt745Service, mtService } from '../../services/mtService';
+import { mt745Service } from '../../services/mtService';
 import type { Mt745Claim } from '../../types/mt';
 
 const STATUS_CONFIG: Record<Mt745Claim['status'], { label: string; color: 'warning' | 'info' | 'success' | 'error' }> = {
@@ -18,54 +18,35 @@ const STATUS_CONFIG: Record<Mt745Claim['status'], { label: string; color: 'warni
   REJECTED: { label: 'Reddedildi', color: 'error' },
 };
 
+const MT745_PLACEHOLDER = `{1:F01BANKTRISAXXX0000000000}{2:O7451200060811BANKTRISAXXX0}{4:
+:20:REF745001
+:21:LC2026/0825/TR
+:32B:USD150,50
+:57A:GLBRUSNYXXX
+:71B:DOCUMENT EXAMINATION CHARGES
+-}`;
+
 const Mt745Page = () => {
   const queryClient = useQueryClient();
-
-  const [mt700Id, setMt700Id] = useState<number | ''>('');
-  const [referenceNumber, setReferenceNumber] = useState('');
-  const [claimingBank, setClaimingBank] = useState('');
-  const [reimbursingBank, setReimbursingBank] = useState('');
-  const [currency, setCurrency] = useState('USD');
-  const [amount, setAmount] = useState('');
-  const [valueDate, setValueDate] = useState('');
-  const [notes, setNotes] = useState('');
+  const [rawText, setRawText] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const { data: mt700List } = useQuery({
-    queryKey: ['mt-messages-list'],
-    queryFn: () => mtService.listMtMessages(),
-  });
+  const [lastSaved, setLastSaved] = useState<Mt745Claim | null>(null);
 
   const { data: claims, isLoading } = useQuery({
     queryKey: ['mt745-list'],
     queryFn: () => mt745Service.list(),
   });
 
-  const createMutation = useMutation({
-    mutationFn: () =>
-      mt745Service.create({
-        mt700Id: mt700Id || undefined,
-        mt700Reference: undefined,
-        referenceNumber: referenceNumber || undefined,
-        claimingBank,
-        reimbursingBank: reimbursingBank || undefined,
-        currency,
-        amount: parseFloat(amount),
-        valueDate: valueDate || undefined,
-        notes: notes || undefined,
-      }),
-    onSuccess: () => {
+  const parseMutation = useMutation({
+    mutationFn: () => mt745Service.parseAndSave(rawText),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mt745-list'] });
-      setReferenceNumber('');
-      setClaimingBank('');
-      setReimbursingBank('');
-      setAmount('');
-      setValueDate('');
-      setNotes('');
+      setLastSaved(data);
+      setRawText('');
       setError(null);
     },
     onError: (err: any) => {
-      setError(err?.response?.data?.message ?? 'Rambursman talebi oluşturulamadı.');
+      setError(err?.response?.data?.message ?? 'MT745 ayrıştırılamadı.');
     },
   });
 
@@ -88,7 +69,7 @@ const Mt745Page = () => {
       <Box sx={{ mb: 3 }}>
         <Typography variant="h5" fontWeight={700}>MT 745 — Rambursman Talepleri</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Bir akreditife bağlı masraf/rambursman taleplerini kaydedin ve durumlarını takip edin.
+          Ham SWIFT MT745 metnini yapıştırın — :20: referans, :21: ilişkili referans, :32B: tutar, :57A/D: rambursman bankası ve :71B: masraf detayı otomatik ayrıştırılır.
         </Typography>
       </Box>
 
@@ -98,108 +79,51 @@ const Mt745Page = () => {
         </Alert>
       )}
 
+      {lastSaved && (
+        <Alert
+          severity={lastSaved.mt700Id ? 'success' : 'info'}
+          sx={{ mb: 2 }}
+          onClose={() => setLastSaved(null)}
+          icon={lastSaved.mt700Id ? <LinkIcon fontSize="small" /> : undefined}
+        >
+          Kaydedildi — Referans: {lastSaved.referenceNumber || '—'} · Tutar: {lastSaved.currency || '—'} {lastSaved.amount ?? '—'}
+          {lastSaved.mt700Id
+            ? ` · MT700 (${lastSaved.mt700Reference}) ile otomatik eşleşti`
+            : lastSaved.relatedReference
+            ? ' · İlişkili referansla eşleşen kayıtlı bir MT700 bulunamadı'
+            : ''}
+        </Alert>
+      )}
+
       <Grid container spacing={2.5}>
-        {/* Sol: Yeni Talep */}
+        {/* Sol: Ayrıştır */}
         <Grid item xs={12} lg={5}>
           <Card>
             <CardContent sx={{ p: 2.5 }}>
               <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                Yeni Rambursman Talebi
+                MT745 Metnini Yapıştır
               </Typography>
 
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Bağlı MT 700 (opsiyonel)</InputLabel>
-                <Select
-                  value={mt700Id}
-                  onChange={(e) => setMt700Id(e.target.value as number)}
-                  label="Bağlı MT 700 (opsiyonel)"
-                >
-                  <MenuItem value="">
-                    <em>Yok</em>
-                  </MenuItem>
-                  {(mt700List ?? []).map((mt) => (
-                    <MenuItem key={mt.id} value={mt.id}>
-                      {mt.referenceNumber || `MT700 #${mt.id}`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
               <TextField
-                label="Referans No (opsiyonel)"
-                fullWidth
-                size="small"
-                value={referenceNumber}
-                onChange={(e) => setReferenceNumber(e.target.value)}
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="Talep Eden Banka"
-                fullWidth
-                size="small"
-                required
-                value={claimingBank}
-                onChange={(e) => setClaimingBank(e.target.value)}
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="Rambursman Bankası (opsiyonel)"
-                fullWidth
-                size="small"
-                value={reimbursingBank}
-                onChange={(e) => setReimbursingBank(e.target.value)}
-                sx={{ mb: 2 }}
-              />
-
-              <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
-                <TextField
-                  label="Döviz"
-                  size="small"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                  sx={{ width: 100 }}
-                />
-                <TextField
-                  label="Tutar"
-                  type="number"
-                  size="small"
-                  fullWidth
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </Box>
-
-              <TextField
-                label="Valör Tarihi"
-                type="date"
-                size="small"
-                fullWidth
-                value={valueDate}
-                onChange={(e) => setValueDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="Notlar (opsiyonel)"
                 multiline
-                rows={3}
+                rows={12}
                 fullWidth
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                sx={{ mb: 2 }}
+                variant="outlined"
+                placeholder={MT745_PLACEHOLDER}
+                value={rawText}
+                onChange={(e) => setRawText(e.target.value)}
+                InputProps={{ sx: { fontFamily: 'monospace', fontSize: '0.8rem' } }}
+                sx={{ mb: 1.5 }}
               />
 
               <Button
                 variant="contained"
                 fullWidth
-                disabled={!claimingBank.trim() || !currency.trim() || !amount || createMutation.isPending}
-                onClick={() => createMutation.mutate()}
-                startIcon={createMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+                disabled={!rawText.trim() || parseMutation.isPending}
+                onClick={() => parseMutation.mutate()}
+                startIcon={parseMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
               >
-                {createMutation.isPending ? 'Oluşturuluyor…' : 'Talep Oluştur'}
+                {parseMutation.isPending ? 'Ayrıştırılıyor…' : 'Ayrıştır ve Kaydet'}
               </Button>
             </CardContent>
           </Card>
@@ -223,9 +147,8 @@ const Mt745Page = () => {
                     <TableRow>
                       <TableCell>Referans</TableCell>
                       <TableCell>MT700</TableCell>
-                      <TableCell>Talep Eden Banka</TableCell>
                       <TableCell align="right">Tutar</TableCell>
-                      <TableCell>Valör</TableCell>
+                      <TableCell>Rambursman Bankası</TableCell>
                       <TableCell>Durum</TableCell>
                       <TableCell />
                     </TableRow>
@@ -234,10 +157,15 @@ const Mt745Page = () => {
                     {claims.map((c: Mt745Claim) => (
                       <TableRow key={c.id} hover>
                         <TableCell>{c.referenceNumber || '—'}</TableCell>
-                        <TableCell>{c.mt700Reference || '—'}</TableCell>
-                        <TableCell>{c.claimingBank}</TableCell>
-                        <TableCell align="right">{c.currency} {c.amount.toLocaleString()}</TableCell>
-                        <TableCell>{c.valueDate ? format(new Date(c.valueDate), 'd MMM yyyy') : '—'}</TableCell>
+                        <TableCell>
+                          {c.mt700Reference ? (
+                            <Chip icon={<LinkIcon fontSize="small" />} label={c.mt700Reference} size="small" color="success" variant="outlined" />
+                          ) : c.relatedReference ? (
+                            <Chip label={`${c.relatedReference} (eşleşmedi)`} size="small" color="warning" variant="outlined" />
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell align="right">{c.currency || '—'} {c.amount != null ? c.amount.toLocaleString() : '—'}</TableCell>
+                        <TableCell>{c.reimbursingBank || '—'}</TableCell>
                         <TableCell>
                           <Select
                             size="small"

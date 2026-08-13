@@ -57,6 +57,8 @@ export interface Mt799Message {
   mt700Id?: number;
   mt700Reference?: string;
   referenceNumber?: string;
+  relatedReference?: string;
+  mt700AutoLinked?: boolean;
   senderBic?: string;
   receiverBic?: string;
   subject?: string;
@@ -70,10 +72,12 @@ export interface Mt745Claim {
   mt700Id?: number;
   mt700Reference?: string;
   referenceNumber?: string;
-  claimingBank: string;
+  relatedReference?: string;
+  mt700AutoLinked?: boolean;
+  claimingBank?: string;
   reimbursingBank?: string;
-  currency: string;
-  amount: number;
+  currency?: string;
+  amount?: number;
   valueDate?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
   notes?: string;

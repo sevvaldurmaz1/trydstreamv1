@@ -4,8 +4,12 @@ MT 700 Route'ları – SWIFT mesajı ayrıştırma ve kaydetme.
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from app.models.mt_schemas import MtParseRequest, MtParseResponse, MtParsedFields
-from app.services.mt_parser import parse_mt700
+from app.models.mt_schemas import (
+    MtParseRequest, MtParseResponse, MtParsedFields,
+    Mt799ParseRequest, Mt799ParseResponse, Mt799ParsedFields,
+    Mt745ParseRequest, Mt745ParseResponse, Mt745ParsedFields,
+)
+from app.services.mt_parser import parse_mt700, parse_mt799, parse_mt745
 
 router = APIRouter(prefix="/mt", tags=["MT Mesajı"])
 
@@ -68,3 +72,33 @@ async def parse_mt_message(req: MtParseRequest):
         parsed=fields,
         field_count=len(parsed.get("raw_fields", {})),
     )
+
+
+@router.post("/799/parse", response_model=Mt799ParseResponse)
+async def parse_mt799_message(req: Mt799ParseRequest):
+    """Ham SWIFT MT799 (serbest format) metnini ayrıştırır."""
+    if not req.raw_text or len(req.raw_text.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Geçerli bir MT799 metni giriniz.")
+
+    try:
+        parsed = parse_mt799(req.raw_text)
+    except Exception as exc:
+        logger.error(f"MT799 ayrıştırma hatası: {exc}")
+        raise HTTPException(status_code=422, detail=f"MT799 ayrıştırılamadı: {str(exc)}")
+
+    return Mt799ParseResponse(parsed=Mt799ParsedFields(**parsed))
+
+
+@router.post("/745/parse", response_model=Mt745ParseResponse)
+async def parse_mt745_message(req: Mt745ParseRequest):
+    """Ham SWIFT MT745 (rambursman bildirimi) metnini ayrıştırır."""
+    if not req.raw_text or len(req.raw_text.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Geçerli bir MT745 metni giriniz.")
+
+    try:
+        parsed = parse_mt745(req.raw_text)
+    except Exception as exc:
+        logger.error(f"MT745 ayrıştırma hatası: {exc}")
+        raise HTTPException(status_code=422, detail=f"MT745 ayrıştırılamadı: {str(exc)}")
+
+    return Mt745ParseResponse(parsed=Mt745ParsedFields(**parsed))
