@@ -48,12 +48,13 @@ export const mtService = {
         mtId: params.mtId,
         documentId: params.documentId,
         documentType: params.documentType ?? 'FATURA',
-        useAi: params.useAi ?? true,
+        useAi: params.useAi ?? false,
         presentationDate: params.presentationDate,
       },
-      // AI açıklaması her bulgu için sırayla Ollama'ya soruluyor; varsayılan
-      // 30sn'lik istemci timeout'u birden fazla bulguda yetersiz kalabiliyor.
-      { timeout: 180_000 },
+      // AI açıklaması her bulgu için sırayla Ollama'ya soruluyor (paralelleştirme
+      // yardımcı olmuyor - Ollama tek modeli tek seferde bir isteğe hizmet ediyor).
+      // Kural sayısı arttıkça (artık 19'a kadar) toplam süre uzayabiliyor.
+      { timeout: 300_000 },
     );
     return res.data.data;
   },

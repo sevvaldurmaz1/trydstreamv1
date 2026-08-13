@@ -42,7 +42,7 @@ const MtKontrolPage = () => {
   const [documentType, setDocumentType] = useState('FATURA');
 
   // Options
-  const [useAi, setUseAi] = useState(true);
+  const [useAi, setUseAi] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 

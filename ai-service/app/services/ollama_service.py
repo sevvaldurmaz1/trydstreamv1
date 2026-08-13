@@ -155,7 +155,7 @@ Yanıtını Türkçe ver ve kısa tut."""
                     "stream": False,
                     "options": {
                         "temperature": 0.1,
-                        "num_predict": 300,
+                        "num_predict": 160,
                     },
                 },
             )
